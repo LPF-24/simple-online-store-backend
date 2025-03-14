@@ -5,9 +5,10 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: test_db
+      POSTGRES_DB: online_store_db
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d  # ⬅ Скрипты в этой папке выполнятся автоматически
     ports:
       - "5433:5432"
 
@@ -19,7 +20,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/online_store_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
 
