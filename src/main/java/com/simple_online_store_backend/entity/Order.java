@@ -1,0 +1,38 @@
+package com.simple_online_store_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+
+@Entity
+@Table(name = "orders")
+@NoArgsConstructor
+@Getter
+@Setter
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToMany(mappedBy = "order", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
+    private List<Product> productList;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderStatus status;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User customer;
+
+    @ManyToOne
+    @JoinColumn(name = "pickup_location_id")
+    private PickupLocation pickupLocation;
+
+    @ManyToOne
+    @JoinColumn(name = "address_id")
+    private Address address;
+}
