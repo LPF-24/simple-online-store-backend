@@ -7,8 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
+@Table(name = "users")
 @NoArgsConstructor
 @Getter
 @Setter
@@ -23,9 +25,16 @@ public class User {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @Column(name = "phone_number", length = 10)
+    @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
     @Column(length = 50)
     private String email;
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Order> orders;
+
+    @ManyToOne
+    @JoinColumn(name = "address_id")
+    private Address address;
 }
