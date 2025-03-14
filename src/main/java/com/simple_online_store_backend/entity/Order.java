@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.entity;
 
+import com.simple_online_store_backend.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
