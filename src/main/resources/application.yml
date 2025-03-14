@@ -1,9 +1,9 @@
 spring:
   application:
-    name: demo2
+    name: simple-online-store-backend
 
   datasource:
-    url: jdbc:postgresql://db:5432/security_simple_project_db  # Подключаемся к БД внутри Docker
+    url: jdbc:postgresql://db:5432/online_store_db  # Подключаемся к БД внутри Docker
     username: postgres
     password: postgres
 
