@@ -26,8 +26,11 @@ public class Address {
     @Column(name = "house_number", nullable = false, length = 10)
     private String houseNumber;
 
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
+
     @OneToMany(mappedBy = "address", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<User> users;
+    private List<User> residents;  // Было users → стало residents (чтобы было понятнее)
 
     @OneToMany(mappedBy = "address", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;

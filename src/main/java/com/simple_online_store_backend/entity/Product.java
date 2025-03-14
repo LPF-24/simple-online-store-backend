@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
 
@@ -20,7 +22,7 @@ public class Product {
     @Column(name = "product_name", nullable = false)
     private String productName;
 
-    @Column(name = "product_description", nullable = false, length = 500)
+    @Column(name = "product_description", nullable = false, length = 600)
     private String productDescription;
 
     //максимум 10 цифр, из них 2 после запятой
@@ -35,5 +37,6 @@ public class Product {
 
     @ManyToOne
     @JoinColumn(name = "order_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private Order order;
 }
