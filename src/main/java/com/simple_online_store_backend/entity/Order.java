@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.List;
 
@@ -26,13 +28,17 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private User customer;
 
     @ManyToOne
     @JoinColumn(name = "pickup_location_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private PickupLocation pickupLocation;
 
     @ManyToOne
     @JoinColumn(name = "address_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private Address address;
 }
+

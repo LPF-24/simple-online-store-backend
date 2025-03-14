@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +24,9 @@ public class User {
     @Column(name = "user_name", nullable = false, length = 100)
     private String userName;
 
+    @Column(nullable = false, length = 100)
+    private String password;
+
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
@@ -36,5 +41,6 @@ public class User {
 
     @ManyToOne
     @JoinColumn(name = "address_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private Address address;
 }
