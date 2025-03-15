@@ -28,9 +28,9 @@ public class Order {
     private OrderStatus status;
 
     @ManyToOne
-    @JoinColumn(name = "customer_id")
+    @JoinColumn(name = "person_id")
     @OnDelete(action = OnDeleteAction.SET_NULL)
-    private Customer customer;
+    private Person person;
 
     @ManyToOne
     @JoinColumn(name = "pickup_location_id")
