@@ -1,6 +1,6 @@
 package com.simple_online_store_backend.service;
 
-import com.simple_online_store_backend.entity.Customer;
+import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.repository.CustomerRepository;
 import com.simple_online_store_backend.security.CustomerDetails;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ public class CustomerDetailsService implements org.springframework.security.core
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Customer user = customerRepository.findByUserName(username)
+        Person user = customerRepository.findByUserName(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username doesn't found!"));
         return new CustomerDetails(user);
     }
