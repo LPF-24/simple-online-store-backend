@@ -1,6 +1,5 @@
 package com.simple_online_store_backend.dto;
 
-import jakarta.persistence.Column;
 import lombok.Data;
 
 import java.time.LocalDate;
