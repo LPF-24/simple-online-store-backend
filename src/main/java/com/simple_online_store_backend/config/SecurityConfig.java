@@ -1,6 +1,7 @@
 package com.simple_online_store_backend.config;
 
 import com.simple_online_store_backend.security.PersonDetails;
+import com.simple_online_store_backend.service.PersonDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +30,7 @@ import org.springframework.validation.beanvalidation.MethodValidationPostProcess
 public class SecurityConfig {
     private final JWTFilter jwtFilter;
     private final AuthenticationProvider authenticationProvider;
+    private final PersonDetailsService personDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
@@ -57,14 +59,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
-        // Создаем объект DaoAuthenticationProvider, который будет использоваться для аутентификации пользователей
+    public DaoAuthenticationProvider authenticationProvider(PersonDetailsService personDetailsService) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        // Устанавливаем сервис, который загружает информацию о пользователях (например, из базы данных)
-        authProvider.setUserDetailsService(userDetailsService);
-        // Указываем, какой кодировщик паролей использовать для сравнения введенного пароля с сохраненным
-        authProvider.setPasswordEncoder(passwordEncoder);
-        return new ProviderManager(authProvider);
+        authProvider.setUserDetailsService(personDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
     }
 
     @Bean
