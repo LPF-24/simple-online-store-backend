@@ -8,13 +8,14 @@ CREATE TABLE addresses (
     postal_code VARCHAR(20)
 );
 
-CREATE TABLE users (
+CREATE TABLE customers (
     id BIGSERIAL PRIMARY KEY,
     user_name VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
     date_of_birth DATE CHECK (date_of_birth < CURRENT_DATE),
     phone_number VARCHAR(20),
     email VARCHAR(50),
+    role VARCHAR(100) NOT NULL,
     address_id BIGINT REFERENCES addresses(id) ON DELETE SET NULL
 );
 
@@ -28,7 +29,7 @@ CREATE TABLE pickup_locations (
 CREATE TABLE orders (
     id BIGSERIAL PRIMARY KEY,
     status order_status NOT NULL,
-    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    customer_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     pickup_location_id BIGINT REFERENCES pickup_locations(id) ON DELETE SET NULL,
     address_id BIGINT REFERENCES addresses(id) ON DELETE SET NULL
 );

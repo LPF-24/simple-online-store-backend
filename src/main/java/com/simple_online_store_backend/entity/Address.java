@@ -30,7 +30,7 @@ public class Address {
     private String postalCode;
 
     @OneToMany(mappedBy = "address", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<User> residents;  // Было users → стало residents (чтобы было понятнее)
+    private List<Customer> residents;  // Было users → стало residents (чтобы было понятнее)
 
     @OneToMany(mappedBy = "address", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;

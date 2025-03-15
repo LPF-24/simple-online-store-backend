@@ -24,3 +24,4 @@ logging:
         orm.jpa: DEBUG
         jdbc.core: DEBUG
 
+jwt_secret: SECRET

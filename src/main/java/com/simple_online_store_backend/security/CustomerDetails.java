@@ -1,35 +1,34 @@
 package com.simple_online_store_backend.security;
 
-import com.simple_online_store_backend.entity.User;
+import com.simple_online_store_backend.entity.Customer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
-public class UserDetails implements org.springframework.security.core.userdetails.UserDetails {
-    private final User user;
+public class CustomerDetails implements org.springframework.security.core.userdetails.UserDetails {
+    private final Customer customer;
 
     @Autowired
-    public UserDetails(User user) {
-        this.user = user;
+    public CustomerDetails(Customer customer) {
+        this.customer = customer;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(user));
+        return Collections.singletonList(new SimpleGrantedAuthority(customer.getRole()));
     }
 
     @Override
     public String getPassword() {
-        return "";
+        return customer.getPassword();
     }
 
     @Override
     public String getUsername() {
-        return "";
+        return customer.getUserName();
     }
 
     @Override
@@ -50,5 +49,9 @@ public class UserDetails implements org.springframework.security.core.userdetail
     @Override
     public boolean isEnabled() {
         return org.springframework.security.core.userdetails.UserDetails.super.isEnabled();
+    }
+
+    public Integer getId() {
+        return customer.getId();
     }
 }
