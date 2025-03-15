@@ -36,6 +36,9 @@ public class User {
     @Column(length = 50)
     private String email;
 
+    @Column(nullable = false, length = 100)
+    private String role;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;
 
