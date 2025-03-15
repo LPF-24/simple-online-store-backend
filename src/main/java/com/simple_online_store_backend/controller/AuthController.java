@@ -13,11 +13,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -27,7 +25,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final PersonDetailsService personDetailsService;
 
-    @GetMapping("/login")
+    @PostMapping("/login")
     public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager
@@ -36,8 +34,12 @@ public class AuthController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+            String role = personDetails.getAuthorities().stream()
+                    .findFirst()
+                    .map(GrantedAuthority::getAuthority)
+                    .orElse("ROLE_USER");
 
-            String jwt = jwtUtil.generateToken(personDetails.getUsername());
+            String jwt = jwtUtil.generateToken(personDetails.getUsername(), role);
 
             return ResponseEntity.ok(new JwtResponse(jwt, personDetails.getId(), personDetails.getUsername()));
         } catch (BadCredentialsException e) {
@@ -45,4 +47,6 @@ public class AuthController {
                     .body(new JwtResponse(null, null, "Invalid username or password"));
         }
     }
+
+    //@PostMapping("/")
 }
