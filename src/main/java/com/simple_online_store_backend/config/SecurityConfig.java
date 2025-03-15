@@ -25,7 +25,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("").access((authentication, request) -> {
+                        .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
                             String requestUri = request.getRequest().getRequestURI();
                             String userId = requestUri.replaceAll("\\D+", "");
 
@@ -35,7 +35,8 @@ public class SecurityConfig {
                             boolean isOwner = userId.equals(currentUserId);
 
                             return new AuthorizationDecision(isOwner);
-                        }))
+                        })
+                        .requestMatchers("/auth/login", "/auth/registration", "/error").permitAll())
                 .build();
     }
 
