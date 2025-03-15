@@ -1,6 +1,6 @@
 package com.simple_online_store_backend.security;
 
-import com.simple_online_store_backend.entity.Customer;
+import com.simple_online_store_backend.entity.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -9,10 +9,10 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class CustomerDetails implements org.springframework.security.core.userdetails.UserDetails {
-    private final Customer customer;
+    private final Person customer;
 
     @Autowired
-    public CustomerDetails(Customer customer) {
+    public CustomerDetails(Person customer) {
         this.customer = customer;
     }
 
