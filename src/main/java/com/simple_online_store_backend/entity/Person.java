@@ -11,11 +11,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Entity
-@Table(name = "customers")
+@Table(name = "people")
 @NoArgsConstructor
 @Getter
 @Setter
-public class Customer {
+public class Person {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;

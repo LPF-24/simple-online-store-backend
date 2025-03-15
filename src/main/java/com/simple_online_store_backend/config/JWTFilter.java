@@ -2,7 +2,7 @@ package com.simple_online_store_backend.config;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.simple_online_store_backend.security.JWTUtil;
-import com.simple_online_store_backend.service.CustomerDetailsService;
+import com.simple_online_store_backend.service.PersonDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,12 +19,12 @@ import java.io.IOException;
 @Component
 public class JWTFilter extends OncePerRequestFilter {
     private final JWTUtil jwtUtil;
-    private final CustomerDetailsService customerDetailsService;
+    private final PersonDetailsService personDetailsService;
 
     @Autowired
-    public JWTFilter(JWTUtil jwtUtil, CustomerDetailsService customerDetailsService) {
+    public JWTFilter(JWTUtil jwtUtil, PersonDetailsService personDetailsService) {
         this.jwtUtil = jwtUtil;
-        this.customerDetailsService = customerDetailsService;
+        this.personDetailsService = personDetailsService;
     }
 
     @Override
@@ -39,7 +39,7 @@ public class JWTFilter extends OncePerRequestFilter {
             } else {
                 try {
                     String username = jwtUtil.validateTokenAndExtractClaim(jwt);
-                    UserDetails userDetails = customerDetailsService.loadUserByUsername(username);
+                    UserDetails userDetails = personDetailsService.loadUserByUsername(username);
 
                     UsernamePasswordAuthenticationToken authenticationToken =
                             new UsernamePasswordAuthenticationToken(userDetails, userDetails.getPassword(),

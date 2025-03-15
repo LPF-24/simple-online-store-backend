@@ -1,6 +1,6 @@
 package com.simple_online_store_backend.config;
 
-import com.simple_online_store_backend.security.CustomerDetails;
+import com.simple_online_store_backend.security.PersonDetails;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authorization.AuthorizationDecision;
@@ -22,8 +22,8 @@ public class SecurityConfig {
                             String requestUri = request.getRequest().getRequestURI();
                             String userId = requestUri.replaceAll("\\D+", "");
 
-                            CustomerDetails customerDetails = (CustomerDetails) authentication.get().getPrincipal();
-                            String currentUserId = String.valueOf(customerDetails.getId());
+                            PersonDetails personDetails = (PersonDetails) authentication.get().getPrincipal();
+                            String currentUserId = String.valueOf(personDetails.getId());
 
                             boolean isOwner = userId.equals(currentUserId);
 
