@@ -9,12 +9,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JWTFilter extends OncePerRequestFilter {
@@ -29,7 +31,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String authHeader = response.getHeader("Authorization");
+        String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && !authHeader.isBlank() && authHeader.startsWith("Bearer ")) {
             String jwt = authHeader.substring(7);
@@ -38,16 +40,17 @@ public class JWTFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST);
             } else {
                 try {
-                    String username = jwtUtil.validateTokenAndExtractClaim(jwt);
+                    String username = jwtUtil.validateToken(jwt).getClaim("username").asString();
+                    String role = jwtUtil.validateToken(jwt).getClaim("role").asString();
+
                     UserDetails userDetails = personDetailsService.loadUserByUsername(username);
 
                     UsernamePasswordAuthenticationToken authenticationToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, userDetails.getPassword(),
-                                    userDetails.getAuthorities());
+                            new UsernamePasswordAuthenticationToken(userDetails, null,
+                                    List.of(new SimpleGrantedAuthority(role)));
 
-                    if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-                    }
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                    filterChain.doFilter(request, response);
                 } catch (JWTVerificationException exception) {
                     response.sendError(HttpServletResponse.SC_BAD_REQUEST,
                             "Invalid JWT Token");

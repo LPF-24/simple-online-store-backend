@@ -1,6 +1,7 @@
 package com.simple_online_store_backend.config;
 
 import com.simple_online_store_backend.security.PersonDetails;
+import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -11,8 +12,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
 
 @Configuration
 @EnableWebSecurity
@@ -45,5 +48,20 @@ public class SecurityConfig {
         // Указываем, какой кодировщик паролей использовать для сравнения введенного пароля с сохраненным
         authProvider.setPasswordEncoder(passwordEncoder);
         return new ProviderManager(authProvider);
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public ModelMapper modelMapper() {
+        return new ModelMapper();
+    }
+
+    @Bean
+    public MethodValidationPostProcessor methodValidationPostProcessor() {
+        return new MethodValidationPostProcessor();
     }
 }
