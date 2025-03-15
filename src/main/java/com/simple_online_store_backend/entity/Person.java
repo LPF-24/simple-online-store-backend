@@ -38,7 +38,7 @@ public class Person {
     @Column(nullable = false, length = 100)
     private String role;
 
-    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;
 
     @ManyToOne
