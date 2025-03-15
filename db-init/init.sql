@@ -8,7 +8,7 @@ CREATE TABLE addresses (
     postal_code VARCHAR(20)
 );
 
-CREATE TABLE customers (
+CREATE TABLE people (
     id BIGSERIAL PRIMARY KEY,
     user_name VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE pickup_locations (
 CREATE TABLE orders (
     id BIGSERIAL PRIMARY KEY,
     status order_status NOT NULL,
-    customer_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    person_id BIGINT REFERENCES people(id) ON DELETE SET NULL,
     pickup_location_id BIGINT REFERENCES pickup_locations(id) ON DELETE SET NULL,
     address_id BIGINT REFERENCES addresses(id) ON DELETE SET NULL
 );

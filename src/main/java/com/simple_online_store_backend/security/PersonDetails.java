@@ -8,27 +8,27 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.Collection;
 import java.util.Collections;
 
-public class CustomerDetails implements org.springframework.security.core.userdetails.UserDetails {
-    private final Person customer;
+public class PersonDetails implements org.springframework.security.core.userdetails.UserDetails {
+    private final Person person;
 
     @Autowired
-    public CustomerDetails(Person customer) {
-        this.customer = customer;
+    public PersonDetails(Person person) {
+        this.person = person;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(customer.getRole()));
+        return Collections.singletonList(new SimpleGrantedAuthority(person.getRole()));
     }
 
     @Override
     public String getPassword() {
-        return customer.getPassword();
+        return person.getPassword();
     }
 
     @Override
     public String getUsername() {
-        return customer.getUserName();
+        return person.getUserName();
     }
 
     @Override
@@ -52,6 +52,6 @@ public class CustomerDetails implements org.springframework.security.core.userde
     }
 
     public Integer getId() {
-        return customer.getId();
+        return person.getId();
     }
 }
