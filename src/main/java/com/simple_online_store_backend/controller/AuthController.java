@@ -2,9 +2,14 @@ package com.simple_online_store_backend.controller;
 
 import com.simple_online_store_backend.dto.JwtResponse;
 import com.simple_online_store_backend.dto.LoginRequest;
+import com.simple_online_store_backend.dto.PersonRequestDTO;
+import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
+import com.simple_online_store_backend.service.PeopleService;
 import com.simple_online_store_backend.service.PersonDetailsService;
+import com.simple_online_store_backend.util.PersonValidator;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +20,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,7 +29,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final JWTUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
-    private final PersonDetailsService personDetailsService;
+    private final PeopleService peopleService;
+    private final PersonValidator personValidator;
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginRequest) {
@@ -48,5 +55,15 @@ public class AuthController {
         }
     }
 
-    //@PostMapping("/")
+    @PostMapping("/registration")
+    public ResponseEntity<HttpStatus> performRegistration(@RequestBody @Valid PersonRequestDTO dto,
+                                                          BindingResult bindingResult) {
+        personValidator.validate(dto, bindingResult);
+        if (bindingResult.hasErrors())
+            ErrorUtil.returnErrorsToClient(bindingResult);
+
+        peopleService.register(new PersonRequestDTO());
+        return ResponseEntity.ok(HttpStatus.OK);
+    }
+
 }
