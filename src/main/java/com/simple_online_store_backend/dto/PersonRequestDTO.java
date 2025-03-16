@@ -32,9 +32,9 @@ public class PersonRequestDTO {
     //@ValidPhoneNumber
     private String phoneNumber;
 
-    @NotEmpty(message = "Password can't be empty")
+    @NotEmpty(message = "Email can't be empty")
     @Email(message = "Email should be valid")
-    @Max(value = 50, message = "Email can contain a maximum of 50 characters")
+    @Size(max = 50, message = "Email can contain a maximum of 50 characters")
     private String email;
 
     @NotNull(message = "You must accept the terms and conditions")
