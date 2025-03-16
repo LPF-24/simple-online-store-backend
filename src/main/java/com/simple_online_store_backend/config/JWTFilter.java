@@ -30,32 +30,27 @@ public class JWTFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        try {
+            String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && !authHeader.isBlank() && authHeader.startsWith("Bearer ")) {
-            String jwt = authHeader.substring(7);
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwt = authHeader.substring(7);
+                String username = jwtUtil.validateToken(jwt).getClaim("username").asString();
+                String role = jwtUtil.validateToken(jwt).getClaim("role").asString();
 
-            if (jwt.isBlank()) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST);
-            } else {
-                try {
-                    String username = jwtUtil.validateToken(jwt).getClaim("username").asString();
-                    String role = jwtUtil.validateToken(jwt).getClaim("role").asString();
+                UserDetails userDetails = personDetailsService.loadUserByUsername(username);
+                UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, List.of(new SimpleGrantedAuthority(role)));
 
-                    UserDetails userDetails = personDetailsService.loadUserByUsername(username);
-
-                    UsernamePasswordAuthenticationToken authenticationToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null,
-                                    List.of(new SimpleGrantedAuthority(role)));
-
-                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-                    filterChain.doFilter(request, response);
-                } catch (JWTVerificationException exception) {
-                    response.sendError(HttpServletResponse.SC_BAD_REQUEST,
-                            "Invalid JWT Token");
-                }
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
+
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal error in JWT filter");
         }
     }
 }
