@@ -16,11 +16,15 @@ public class PeopleService {
     private final PersonConverter personConverter;
 
     @Transactional
-    public PersonResponseDTO register(PersonRequestDTO personRequestDTO) {
-        Person person = personConverter.convertToPerson(personRequestDTO);
+    public void register(PersonRequestDTO personRequestDTO) {
+        System.out.println("Method register started");
+        System.out.println("DTO: " + personRequestDTO);
+        Person person = personConverter.convertToPersonToRequest(personRequestDTO);
         person.setRole("ROLE_USER");
+        System.out.println("Middle of the method register");
         peopleRepository.saveAndFlush(person);
-
-        return personConverter.convertToResponseDTO(person);
+        System.out.println("Method register ended");
     }
+
+
 }
