@@ -25,12 +25,19 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
-@RequiredArgsConstructor
 public class AuthController {
     private final JWTUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final PeopleService peopleService;
     private final PersonValidator personValidator;
+
+    @Autowired
+    public AuthController(JWTUtil jwtUtil, AuthenticationManager authenticationManager, PeopleService peopleService, PersonValidator personValidator) {
+        this.jwtUtil = jwtUtil;
+        this.authenticationManager = authenticationManager;
+        this.peopleService = peopleService;
+        this.personValidator = personValidator;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginRequest) {
@@ -58,11 +65,15 @@ public class AuthController {
     @PostMapping("/registration")
     public ResponseEntity<HttpStatus> performRegistration(@RequestBody @Valid PersonRequestDTO dto,
                                                           BindingResult bindingResult) {
+        System.out.println("Beginning of the method performRegistration");
         personValidator.validate(dto, bindingResult);
+        System.out.println("Validation with personValidator was successful");
         if (bindingResult.hasErrors())
             ErrorUtil.returnErrorsToClient(bindingResult);
+        System.out.println("Middle of the method");
 
-        peopleService.register(new PersonRequestDTO());
+        peopleService.register(dto);
+        System.out.println("End of the method performRegistration");
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
