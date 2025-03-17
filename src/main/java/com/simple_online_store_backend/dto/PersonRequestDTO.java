@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.dto;
 
+import com.simple_online_store_backend.validation.annotation.ValidDateOfBirth;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,9 +22,7 @@ public class PersonRequestDTO {
     //@ValidPassword
     private String password;
 
-    //@ValidDateOfBirth
-    //временно
-    @Past(message = "Date of birth must be in the past")
+    @ValidDateOfBirth
     private LocalDate dateOfBirth;
 
     @Size(min = 2, max = 20, message = "Phone number must be between 2 and 20 characters long")

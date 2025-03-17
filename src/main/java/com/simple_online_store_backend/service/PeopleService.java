@@ -1,7 +1,6 @@
 package com.simple_online_store_backend.service;
 
 import com.simple_online_store_backend.dto.PersonRequestDTO;
-import com.simple_online_store_backend.dto.PersonResponseDTO;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.mapper.PersonConverter;
 import com.simple_online_store_backend.repository.PeopleRepository;
