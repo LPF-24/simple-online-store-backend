@@ -1,12 +1,13 @@
 package com.simple_online_store_backend.config;
 
-import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.service.PersonDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -20,6 +21,8 @@ import java.util.List;
 
 @Component
 public class JWTFilter extends OncePerRequestFilter {
+    private final Logger logger = LoggerFactory.getLogger(JWTFilter.class);
+
     private final JWTUtil jwtUtil;
     private final PersonDetailsService personDetailsService;
 
@@ -31,7 +34,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+            throws IOException {
         try {
             String authHeader = request.getHeader("Authorization");
 
@@ -41,6 +44,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 String role = jwtUtil.validateToken(jwt).getClaim("role").asString();
 
                 UserDetails userDetails = personDetailsService.loadUserByUsername(username);
+                //null – это пароль (credentials), который передаётся в объект UsernamePasswordAuthenticationToken
+                //поскольку пароль не нужен (в данном случае только проверяется аутентифицирован ли пользователь
                 UsernamePasswordAuthenticationToken authenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, List.of(new SimpleGrantedAuthority(role)));
 
@@ -49,7 +54,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error in JWT filter: {}", e.getMessage(), e); // ✅ Правильное логирование ошибки
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal error in JWT filter");
         }
     }
