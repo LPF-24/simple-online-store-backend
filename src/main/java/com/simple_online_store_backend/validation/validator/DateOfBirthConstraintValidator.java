@@ -1,4 +1,4 @@
-package com.simple_online_store_backend.validation;
+package com.simple_online_store_backend.validation.validator;
 
 import com.simple_online_store_backend.validation.annotation.ValidDateOfBirth;
 import jakarta.validation.ConstraintValidator;
@@ -18,6 +18,6 @@ public class DateOfBirthConstraintValidator implements ConstraintValidator<Valid
         LocalDate today = LocalDate.now();
         LocalDate minDate = today.minusYears(14);
         System.out.println("Method isValid of DateOfBirthConstraintValidator ended");
-        return dateOfBirth.isBefore(today) || dateOfBirth.isBefore(minDate);
+        return dateOfBirth.isBefore(today) && dateOfBirth.isBefore(minDate);
     }
 }
