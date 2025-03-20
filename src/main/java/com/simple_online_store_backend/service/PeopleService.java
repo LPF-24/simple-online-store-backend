@@ -1,6 +1,7 @@
 package com.simple_online_store_backend.service;
 
 import com.simple_online_store_backend.dto.PersonRequestDTO;
+import com.simple_online_store_backend.dto.PersonResponseDTO;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.mapper.PersonConverter;
 import com.simple_online_store_backend.repository.PeopleRepository;
@@ -8,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +27,10 @@ public class PeopleService {
         System.out.println("Middle of the method register");
         peopleRepository.saveAndFlush(person);
         System.out.println("Method register ended");
+    }
+
+    public List<PersonResponseDTO> getAllConsumers() {
+        return peopleRepository.findAllByRole("ROLE_USER").stream().map(personConverter::convertToResponseDTO).toList();
     }
 
     @Transactional
