@@ -38,6 +38,9 @@ public class Person {
     @Column(nullable = false, length = 100)
     private String role;
 
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;
 

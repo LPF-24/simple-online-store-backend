@@ -8,7 +8,7 @@ import java.lang.annotation.*;
 
 @Documented
 @Constraint(validatedBy = DateOfBirthConstraintValidator.class)
-@Target({ElementType.TYPE, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidDateOfBirth {
     String message() default "Date of birth must be in the past. User must be over 14 years old.";

@@ -38,7 +38,7 @@ public class PersonDetails implements org.springframework.security.core.userdeta
 
     @Override
     public boolean isAccountNonLocked() {
-        return org.springframework.security.core.userdetails.UserDetails.super.isAccountNonLocked();
+        return !person.getIsDeleted();
     }
 
     @Override

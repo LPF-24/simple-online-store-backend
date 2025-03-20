@@ -1,6 +1,8 @@
 package com.simple_online_store_backend.dto;
 
 import com.simple_online_store_backend.validation.annotation.ValidDateOfBirth;
+import com.simple_online_store_backend.validation.annotation.ValidPassword;
+import com.simple_online_store_backend.validation.annotation.ValidPhoneNumber;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,18 +19,13 @@ public class PersonRequestDTO {
     private String userName;
 
     @NotEmpty(message = "Password can't be empty")
-    //временно
-    @Size(min = 8, max = 100, message = "Password must be at least 8 characters long")
-    //@ValidPassword
+    @ValidPassword
     private String password;
 
     @ValidDateOfBirth
     private LocalDate dateOfBirth;
 
-    @Size(min = 2, max = 20, message = "Phone number must be between 2 and 20 characters long")
-    //временно
-    @Pattern(regexp = "\\+?[0-9\\- ]{7,20}", message = "Phone number format is invalid")
-    //@ValidPhoneNumber
+    @ValidPhoneNumber
     private String phoneNumber;
 
     @NotEmpty(message = "Email can't be empty")
