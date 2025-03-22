@@ -1,0 +1,27 @@
+spring:
+  application:
+    name:
+
+  datasource:
+    url: jdbc:postgresql://
+    username:
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto:
+    show-sql:
+    properties:
+      hibernate:
+        format_sql:
+
+logging:
+  level:
+    root:
+    org:
+      springframework:
+        security:
+        orm.jpa:
+        jdbc.core:
+
+jwt_secret:
