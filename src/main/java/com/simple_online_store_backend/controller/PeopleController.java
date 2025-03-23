@@ -3,10 +3,13 @@ package com.simple_online_store_backend.controller;
 import com.simple_online_store_backend.dto.JwtResponse;
 import com.simple_online_store_backend.dto.LoginRequest;
 import com.simple_online_store_backend.dto.PersonResponseDTO;
+import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,10 +25,12 @@ public class PeopleController {
         return peopleService.getAllConsumers();
     }
 
-    //TODO
-    @PatchMapping("/{id}/deactivate-account")
-    public ResponseEntity<String> deactivateAccount(@PathVariable("id") int userId) {
+    @RequestMapping(value = "/deactivate-account", method = {RequestMethod.POST, RequestMethod.PATCH})
+    public ResponseEntity<String> deactivateAccount() {
         System.out.println("Method deactivateAccount started");
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        int userId = ((PersonDetails) authentication.getPrincipal()).getId();
         peopleService.deactivateUserAccount(userId);
         System.out.println("Method deactivateAccount ended");
 
