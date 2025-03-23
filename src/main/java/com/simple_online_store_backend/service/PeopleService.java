@@ -8,7 +8,9 @@ import com.simple_online_store_backend.mapper.PersonConverter;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.util.Optional;
 public class PeopleService {
     private final PeopleRepository peopleRepository;
     private final PersonConverter personConverter;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public void register(PersonRequestDTO personRequestDTO) {
@@ -42,7 +45,24 @@ public class PeopleService {
                 () -> new EntityNotFoundException("User with this id wasn't found!"));
 
         person.setIsDeleted(true);
-        peopleRepository.saveAndFlush(person);
+        peopleRepository.save(person);
+    }
+
+    @Transactional
+    public void restoreAccount(String username, String rawPassword) {
+        Person person = peopleRepository.findByUserName(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!person.getIsDeleted()) {
+            throw new IllegalStateException("Account is already active");
+        }
+
+        if (!passwordEncoder.matches(rawPassword, person.getPassword())) {
+            throw new BadCredentialsException("Incorrect password");
+        }
+
+        person.setIsDeleted(false);
+        peopleRepository.save(person);
     }
 
     public int getAddressIdByPersonId(int personId) {
