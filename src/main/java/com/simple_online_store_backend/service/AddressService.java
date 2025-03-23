@@ -3,8 +3,10 @@ package com.simple_online_store_backend.service;
 import com.simple_online_store_backend.dto.address.AddressRequestDTO;
 import com.simple_online_store_backend.dto.address.AddressResponseDTO;
 import com.simple_online_store_backend.entity.Address;
+import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.mapper.AddressMapper;
 import com.simple_online_store_backend.repository.AddressRepository;
+import com.simple_online_store_backend.repository.PeopleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -16,19 +18,33 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AddressService {
     private final AddressRepository addressRepository;
+    private final PeopleRepository peopleRepository;
     private final AddressMapper addressMapper;
-    private final PeopleService peopleService;
 
     @Transactional
-    public AddressResponseDTO addAddress(AddressRequestDTO dto) {
-        Address addressToAdd = addressMapper.mapRequestDTOToAddress(dto);
-        addressRepository.save(addressToAdd);
-        return addressMapper.mapAddressToResponseDTO(addressToAdd);
+    public AddressResponseDTO addAddress(AddressRequestDTO dto, int personId) {
+        Person person = peopleRepository.findById(personId)
+                .orElseThrow(() -> new EntityNotFoundException("Person with this id wasn't found!"));
+
+        Optional<Address> exiting = addressRepository
+                .findByCityAndStreetAndHouseNumberAndApartment(dto.getCity(), dto.getStreet(), dto.getHouseNumber(),
+                        dto.getApartment());
+
+        if (exiting.isPresent()) {
+            person.setAddress(exiting.get());
+            return addressMapper.mapAddressToResponseDTO(exiting.get());
+        } else {
+            Address addressToAdd = addressMapper.mapRequestDTOToAddress(dto);
+            addressRepository.save(addressToAdd);
+            person.setAddress(addressToAdd);
+            return addressMapper.mapAddressToResponseDTO(addressToAdd);
+        }
     }
 
     @Transactional
