@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,16 +39,18 @@ public class PeopleService {
     @Transactional
     public void deactivateUserAccount(int userId) {
         Person person = peopleRepository.findById(userId).orElseThrow(
-                () -> new UsernameNotFoundException("User with this id wasn't found!"));
+                () -> new EntityNotFoundException("User with this id wasn't found!"));
 
         person.setIsDeleted(true);
         peopleRepository.saveAndFlush(person);
     }
 
     public int getAddressIdByPersonId(int personId) {
-        Address address = peopleRepository.findAddressById(personId).orElseThrow(
-                () -> new EntityNotFoundException("The user has not yet specified their address."));
+        Person person = peopleRepository.findById(personId).orElseThrow(() ->
+                new EntityNotFoundException("User with this id wasn't found!"));
 
-        return address.getId();
+        return Optional.ofNullable(person.getAddress())
+                .map(Address::getId)
+                .orElseThrow(() -> new EntityNotFoundException("The user has not yet specified their address."));
     }
 }

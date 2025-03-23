@@ -2,7 +2,6 @@ package com.simple_online_store_backend.service;
 
 import com.simple_online_store_backend.dto.address.AddressRequestDTO;
 import com.simple_online_store_backend.dto.address.AddressResponseDTO;
-import com.simple_online_store_backend.dto.address.AddressUpdateDTO;
 import com.simple_online_store_backend.entity.Address;
 import com.simple_online_store_backend.mapper.AddressMapper;
 import com.simple_online_store_backend.repository.AddressRepository;
@@ -33,7 +32,7 @@ public class AddressService {
     }
 
     @Transactional
-    public AddressResponseDTO updateAddress(Integer addressId, AddressUpdateDTO dto) {
+    public AddressResponseDTO updateAddress(Integer addressId, AddressRequestDTO dto) {
         Address addressToUpdate = addressRepository.findById(addressId).orElseThrow(() ->
                 new EntityNotFoundException("There is no address with ID" + addressId));
 
