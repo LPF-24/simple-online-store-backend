@@ -15,4 +15,6 @@ public class AddressResponseDTO {
     private String houseNumber;
 
     private String postalCode;
+
+    private String apartment;
 }
