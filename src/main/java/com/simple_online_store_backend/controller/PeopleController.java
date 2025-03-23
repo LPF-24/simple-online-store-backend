@@ -1,5 +1,7 @@
 package com.simple_online_store_backend.controller;
 
+import com.simple_online_store_backend.dto.JwtResponse;
+import com.simple_online_store_backend.dto.LoginRequest;
 import com.simple_online_store_backend.dto.PersonResponseDTO;
 import com.simple_online_store_backend.service.PeopleService;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +24,17 @@ public class PeopleController {
 
     //TODO
     @PatchMapping("/{id}/deactivate-account")
-    public ResponseEntity<HttpStatus> deactivateAccount(@PathVariable("id") int userId) {
+    public ResponseEntity<String> deactivateAccount(@PathVariable("id") int userId) {
         System.out.println("Method deactivateAccount started");
         peopleService.deactivateUserAccount(userId);
         System.out.println("Method deactivateAccount ended");
 
-        return ResponseEntity.ok(HttpStatus.OK);
+        return ResponseEntity.ok("Account has been deactivated.");
+    }
+
+    @PatchMapping("/restore-account")
+    public ResponseEntity<?> restoreAccount(@RequestBody LoginRequest loginRequest) {
+        peopleService.restoreAccount(loginRequest.getUsername(), loginRequest.getPassword());
+        return ResponseEntity.ok("Account successfully restored");
     }
 }
