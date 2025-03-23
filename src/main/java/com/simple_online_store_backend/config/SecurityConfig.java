@@ -74,8 +74,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // отключаем CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/registration", "/error", "/people/all-customers").permitAll()
-                        .requestMatchers("/address/add-address", "/address/update-address").hasAuthority("ROLE_USER")
+                        .requestMatchers("/auth/login", "/auth/registration", "/error", "/people/all-customers", "/people/restore-account").permitAll()
+                        .requestMatchers("/address/add-address", "/address/update-address", "/people/deactivate-account").hasAuthority("ROLE_USER")
                         .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
                             String requestUri = request.getRequest().getRequestURI();
                             // извлекаем userId из URL

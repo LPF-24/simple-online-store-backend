@@ -1,5 +1,6 @@
 application.yml
 docker-compose.yml
+db-init/
 
 HELP.md
 target/
