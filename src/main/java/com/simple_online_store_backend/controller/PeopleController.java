@@ -37,7 +37,7 @@ public class PeopleController {
         return ResponseEntity.ok("Account has been deactivated.");
     }
 
-    @PatchMapping("/restore-account")
+    @RequestMapping(value = "/restore-account", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<?> restoreAccount(@RequestBody LoginRequest loginRequest) {
         peopleService.restoreAccount(loginRequest.getUsername(), loginRequest.getPassword());
         return ResponseEntity.ok("Account successfully restored");
