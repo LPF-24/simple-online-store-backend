@@ -27,7 +27,10 @@ public class AddressController {
         if (bindingResult.hasErrors())
             ErrorUtil.returnErrorsToClient(bindingResult);
 
-        AddressResponseDTO address = addressService.addAddress(dto);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        int userId = ((PersonDetails) authentication.getPrincipal()).getId();
+
+        AddressResponseDTO address = addressService.addAddress(dto, userId);
         return ResponseEntity.ok(address);
     }
 
@@ -38,8 +41,8 @@ public class AddressController {
             ErrorUtil.returnErrorsToClient(bindingResult);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Integer userId = ((PersonDetails) authentication.getPrincipal()).getId();
-        Integer addressId = peopleService.getAddressIdByPersonId(userId);
+        int userId = ((PersonDetails) authentication.getPrincipal()).getId();
+        int addressId = peopleService.getAddressIdByPersonId(userId);
 
         AddressResponseDTO updatedAddress = addressService.updateAddress(addressId, dto);
         return ResponseEntity.ok(updatedAddress);

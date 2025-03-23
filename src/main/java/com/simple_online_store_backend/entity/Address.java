@@ -26,6 +26,9 @@ public class Address {
     @Column(name = "house_number", nullable = false, length = 10)
     private String houseNumber;
 
+    @Column(name = "apartment", length = 20)
+    private String apartment;
+
     @Column(name = "postal_code", length = 20)
     private String postalCode;
 
