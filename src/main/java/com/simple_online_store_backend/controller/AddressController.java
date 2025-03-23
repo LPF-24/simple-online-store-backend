@@ -2,9 +2,7 @@ package com.simple_online_store_backend.controller;
 
 import com.simple_online_store_backend.dto.address.AddressRequestDTO;
 import com.simple_online_store_backend.dto.address.AddressResponseDTO;
-import com.simple_online_store_backend.dto.address.AddressUpdateDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
-import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.AddressService;
 import com.simple_online_store_backend.service.PeopleService;
@@ -33,8 +31,8 @@ public class AddressController {
         return ResponseEntity.ok(address);
     }
 
-    @PatchMapping("/update-address")
-    public ResponseEntity<AddressResponseDTO> updateAddress(@RequestBody @Valid AddressUpdateDTO dto,
+    @RequestMapping(value = "/update-address", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<AddressResponseDTO> updateAddress(@RequestBody @Valid AddressRequestDTO dto,
                                                             BindingResult bindingResult) {
         if (bindingResult.hasErrors())
             ErrorUtil.returnErrorsToClient(bindingResult);
