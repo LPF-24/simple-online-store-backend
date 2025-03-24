@@ -8,6 +8,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -35,8 +37,6 @@ public class Product {
     @Column(nullable = false)
     private Boolean availability;
 
-    @ManyToOne
-    @JoinColumn(name = "order_id")
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    private Order order;
+    @ManyToMany(mappedBy = "products")
+    private List<Order> orders = new ArrayList<>();
 }
