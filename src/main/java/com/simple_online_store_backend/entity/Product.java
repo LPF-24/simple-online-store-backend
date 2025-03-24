@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.entity;
 
+import com.simple_online_store_backend.enums.ProductCategory;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,8 +32,9 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "product_category", nullable = false, length = 100)
-    private String productCategory;
+    private ProductCategory productCategory;
 
     @Column(nullable = false)
     private Boolean availability;
