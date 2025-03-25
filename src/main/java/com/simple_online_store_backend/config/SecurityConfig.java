@@ -76,7 +76,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/registration", "/error", "/people/all-customers", "/people/restore-account").permitAll()
                         .requestMatchers("/address/add-address", "/address/update-address", "/people/deactivate-account").hasAuthority("ROLE_USER")
-                        .requestMatchers("/product/add-product").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/product/add-product", "/product/{id}/update-product").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
                             String requestUri = request.getRequest().getRequestURI();
                             // извлекаем userId из URL
