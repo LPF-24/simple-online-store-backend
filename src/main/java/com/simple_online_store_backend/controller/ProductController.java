@@ -9,10 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/product")
@@ -27,6 +24,17 @@ public class ProductController {
             ErrorUtil.returnErrorsToClient(bindingResult);
 
         ProductResponseDTO responseDTO = productService.addProduct(dto);
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @RequestMapping(value = "/{id}/update-product", method = {RequestMethod.POST, RequestMethod.PATCH})
+    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable("id") int productId,
+                                                            @RequestBody @Valid ProductRequestDTO dto,
+                                                         BindingResult bindingResult) {
+        if (bindingResult.hasErrors())
+            ErrorUtil.returnErrorsToClient(bindingResult);
+
+        ProductResponseDTO responseDTO = productService.editProduct(dto, productId);
         return ResponseEntity.ok(responseDTO);
     }
 }
