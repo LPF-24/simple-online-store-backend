@@ -17,7 +17,8 @@ public class JWTUtil {
     private String secret;
 
     public String generateToken(String username, String role) {
-        Date expirationDate = Date.from(ZonedDateTime.now().plusMinutes(60).toInstant());
+        Date expirationDate = Date.from(ZonedDateTime.now().plusMinutes(1).toInstant());
+        //ВРЕМЕННОЕ ИЗМЕНЕНИЕ!!!!!
 
         return JWT.create()
                 .withSubject("User details")
@@ -36,5 +37,25 @@ public class JWTUtil {
                 .withIssuer("ADMIN")
                 .build();
         return verifier.verify(token);
+    }
+
+    public String generateRefreshToken(String username) {
+        Date expirationDate = Date.from(ZonedDateTime.now().plusDays(7).toInstant());
+
+        return JWT.create()
+                .withSubject("RefreshToken")
+                .withClaim("username", username)
+                .withIssuedAt(new Date())
+                .withIssuer("ADMIN")
+                .withExpiresAt(expirationDate)
+                .sign(Algorithm.HMAC256(secret));
+    }
+
+    public DecodedJWT validateRefreshToken(String token) {
+        return JWT.require(Algorithm.HMAC256(secret))
+                .withSubject("RefreshToken")
+                .withIssuer("ADMIN")
+                .build()
+                .verify(token);
     }
 }
