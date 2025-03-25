@@ -11,7 +11,7 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler
-    public ResponseEntity<Map<String, String>> handlePersonException(PersonException e) {
+    public ResponseEntity<Map<String, String>> handlePersonException(ValidationException e) {
         Map<String, String> response = new HashMap<>();
         response.put("error", e.getMessage());
         return ResponseEntity.badRequest().body(response);

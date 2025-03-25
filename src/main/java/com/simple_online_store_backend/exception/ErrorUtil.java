@@ -16,6 +16,6 @@ public class ErrorUtil {
                     .append(";");
         }
 
-        throw new PersonException(errorMsg.toString());
+        throw new ValidationException(errorMsg.toString());
     }
 }
