@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.config;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.service.PersonDetailsService;
 import jakarta.servlet.FilterChain;
@@ -34,28 +35,38 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws IOException {
+            throws IOException, ServletException {
         try {
             String authHeader = request.getHeader("Authorization");
+            System.out.println("Authorization header = " + authHeader);
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String jwt = authHeader.substring(7);
-                String username = jwtUtil.validateToken(jwt).getClaim("username").asString();
-                String role = jwtUtil.validateToken(jwt).getClaim("role").asString();
+                DecodedJWT decodedJWT = jwtUtil.validateToken(jwt);
+                String username = decodedJWT.getClaim("username").asString();
+                String role = decodedJWT.getClaim("role").asString();
 
-                UserDetails userDetails = personDetailsService.loadUserByUsername(username);
-                //null – это пароль (credentials), который передаётся в объект UsernamePasswordAuthenticationToken
-                //поскольку пароль не нужен (в данном случае только проверяется аутентифицирован ли пользователь
-                UsernamePasswordAuthenticationToken authenticationToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, List.of(new SimpleGrantedAuthority(role)));
+                if (username != null && role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    UserDetails userDetails = personDetailsService.loadUserByUsername(username);
 
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null, // credentials (пароль) больше не нужен
+                                    List.of(new SimpleGrantedAuthority(role))
+                            );
+
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
-
-            filterChain.doFilter(request, response);
         } catch (Exception e) {
-            logger.error("Error in JWT filter: {}", e.getMessage(), e); // ✅ Правильное логирование ошибки
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal error in JWT filter");
+            logger.error("Error in JWT filter: {}", e.getMessage(), e);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
+            return; // обязательно выйти, иначе произойдёт ошибка "двойной отправки": будет отправлена и ошибка
+            // и попытка filterChain.doFilter(request, response);
         }
+
+        filterChain.doFilter(request, response); // должно быть ВНЕ try/catch
     }
+
 }
