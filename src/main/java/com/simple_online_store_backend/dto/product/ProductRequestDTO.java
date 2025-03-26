@@ -1,6 +1,7 @@
 package com.simple_online_store_backend.dto.product;
 
 import com.simple_online_store_backend.enums.ProductCategory;
+import com.simple_online_store_backend.validation.annotation.ValidProductCategory;
 import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class ProductRequestDTO {
     @DecimalMin(value = "0.01", inclusive = true, message = "Price must be at least 0.01")
     private BigDecimal price;
 
+    @ValidProductCategory
     @NotNull(message = "Product category name can't be empty")
     private ProductCategory productCategory;
 
