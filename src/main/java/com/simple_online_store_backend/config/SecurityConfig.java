@@ -74,7 +74,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // отключаем CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/registration", "/auth/refresh", "/auth/logout", "/error", "/people/all-customers", "/people/restore-account").permitAll()
+                        .requestMatchers("/auth/login", "/auth/registration", "/auth/refresh", "/auth/logout", "/error",
+                                "/people/all-customers", "/people/restore-account", "/product").permitAll()
                         .requestMatchers("/address/add-address", "/address/update-address", "/people/deactivate-account").hasAuthority("ROLE_USER")
                         .requestMatchers("/product/add-product", "/product/{id}/update-product").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
