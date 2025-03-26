@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, String>> handleInvalidEnum(HttpMessageNotReadableException e) {
-        String message = "Invalid input: " + e.getMessage();
+        String message = e.getMostSpecificCause().getMessage().split("\n")[0];
         return ResponseEntity.badRequest().body(Map.of("error", message));
     }
 
