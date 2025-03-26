@@ -16,6 +16,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -23,6 +24,10 @@ import java.util.Objects;
 public class ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+
+    public List<ProductResponseDTO> getAllProducts() {
+        return productRepository.findAll().stream().map(productMapper::mapProductToResponseDTO).toList();
+    }
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_ADMIN')")
