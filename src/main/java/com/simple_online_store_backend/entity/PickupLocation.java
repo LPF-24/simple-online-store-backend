@@ -26,6 +26,9 @@ public class PickupLocation {
     @Column(name = "house_number", nullable = false, length = 10)
     private String houseNumber;
 
+    @Column(nullable = false)
+    private Boolean active;
+
     @OneToMany(mappedBy = "pickupLocation", fetch = FetchType.LAZY)
     private List<Order> orderList;
 }
