@@ -34,6 +34,13 @@ public class PickupLocationController {
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/{id}/open-pick-up-location", method = {RequestMethod.POST, RequestMethod.PATCH})
+    public ResponseEntity<HttpStatus> openPickupLocation(@PathVariable("id") int id) {
+        service.openPickupLocation(id);
+
+        return ResponseEntity.ok(HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/{id}/update-pick-up-location", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<PickupLocationResponseDTO> updatePickupLocation(@RequestBody @Valid PickupLocationRequestDTO dto,
                                                                           @PathVariable("id") int id, BindingResult bindingResult) {

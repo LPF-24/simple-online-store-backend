@@ -78,7 +78,8 @@ public class SecurityConfig {
                                 "/people/all-customers", "/people/restore-account", "/product").permitAll()
                         .requestMatchers("/address/add-address", "/address/update-address", "/people/deactivate-account").hasAuthority("ROLE_USER")
                         .requestMatchers("/product/add-product", "/product/{id}/update-product",
-                                "/pickup/add-pickup-location", "/pickup/{id}/close-pick-up-location", "/pickup/{id}/update-pick-up-location").hasAuthority("ROLE_ADMIN")
+                                "/pickup/add-pickup-location", "/pickup/{id}/close-pick-up-location", "/pickup/{id}/open-pick-up-location",
+                                "/pickup/{id}/update-pick-up-location").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
                             String requestUri = request.getRequest().getRequestURI();
                             // извлекаем userId из URL

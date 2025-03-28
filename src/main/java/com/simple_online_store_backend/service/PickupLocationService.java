@@ -43,6 +43,15 @@ public class PickupLocationService {
 
     @Transactional
     @PreAuthorize(("hasRole('ROLE_ADMIN')"))
+    public void openPickupLocation(int id) {
+        PickupLocation location = pickupLocationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Pickup location with this id doesn't exist"));
+
+        location.setActive(true);
+    }
+
+    @Transactional
+    @PreAuthorize(("hasRole('ROLE_ADMIN')"))
     public PickupLocationResponseDTO updatePickupLocation(PickupLocationRequestDTO dto, int id) {
         PickupLocation locationToUpdate = pickupLocationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Pickup location with this id doesn't exist"));
