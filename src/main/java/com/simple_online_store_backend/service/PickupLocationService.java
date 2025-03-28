@@ -7,9 +7,16 @@ import com.simple_online_store_backend.mapper.PickupLocationMapper;
 import com.simple_online_store_backend.repository.PickupLocationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.util.Arrays;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -32,5 +39,35 @@ public class PickupLocationService {
                 .orElseThrow(() -> new EntityNotFoundException("Pickup location with this id doesn't exist"));
 
         location.setActive(false);
+    }
+
+    @Transactional
+    @PreAuthorize(("hasRole('ROLE_ADMIN')"))
+    public PickupLocationResponseDTO updatePickupLocation(PickupLocationRequestDTO dto, int id) {
+        PickupLocation locationToUpdate = pickupLocationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Pickup location with this id doesn't exist"));
+
+        BeanUtils.copyProperties(dto, locationToUpdate, getNullPropertyNames(dto));
+
+        pickupLocationRepository.save(locationToUpdate);
+        return mapper.mapPickupLocationToResponseDTO(locationToUpdate);
+    }
+
+    private String[] getNullPropertyNames(Object source) {
+        try {
+            return Arrays.stream(Introspector.getBeanInfo(source.getClass(), Object.class)
+                    .getPropertyDescriptors())
+                    .map(PropertyDescriptor::getName)
+                    .filter(name -> {
+                        try {
+                            return Objects.isNull(new PropertyDescriptor(name, source.getClass()).getReadMethod().invoke(source));
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
+                    .toArray(String[]::new);
+        } catch (IntrospectionException e) {
+            throw new RuntimeException("Error processing object properties");
+        }
     }
 }
