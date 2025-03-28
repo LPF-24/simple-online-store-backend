@@ -3,19 +3,37 @@ package com.simple_online_store_backend.controller;
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationRequestDTO;
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
+import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PickupLocationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/pickup")
 @RequiredArgsConstructor
 public class PickupLocationController {
     private final PickupLocationService service;
+
+    @GetMapping("/all-pickup-location")
+    public ResponseEntity<List<PickupLocationResponseDTO>> getAllPickupLocations() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        //особый порядок получения роли, чтобы не возникало ошибок
+        String role = ((PersonDetails) authentication.getPrincipal())
+                .getAuthorities().stream()
+                .findFirst()
+                .map(GrantedAuthority::getAuthority)
+                .orElse("ROLE_USER");
+        return ResponseEntity.ok(service.getAllPickupLocations(role));
+    }
 
     @PostMapping("/add-pickup-location")
     public ResponseEntity<PickupLocationResponseDTO> addPickupLocation(@RequestBody @Valid PickupLocationRequestDTO dto,

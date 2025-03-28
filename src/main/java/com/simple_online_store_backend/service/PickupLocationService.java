@@ -16,6 +16,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -23,6 +24,17 @@ import java.util.Objects;
 public class PickupLocationService {
     private final PickupLocationRepository pickupLocationRepository;
     private final PickupLocationMapper mapper;
+
+    public List<PickupLocationResponseDTO> getAllPickupLocations(String role) {
+        List<PickupLocation> locations;
+        if (role.equals("ROLE_ADMIN")) {
+            locations = pickupLocationRepository.findAll();
+        } else {
+            locations = pickupLocationRepository.findByActiveTrue();
+        }
+
+        return locations.stream().map(mapper::mapPickupLocationToResponseDTO).toList();
+    }
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_ADMIN')")
