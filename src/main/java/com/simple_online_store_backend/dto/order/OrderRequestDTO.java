@@ -17,13 +17,6 @@ import lombok.Setter;
 @Setter
 @ValidDeliveryOption
 public class OrderRequestDTO {
-    /*@NotNull(message = "Order status is required")
-    private OrderStatus status;*/
-
-    @NotNull(message = "An order cannot be placed without a customer")
-    @AccountActive
-    private Person person;
-
     @ValidPickupLocation
     private PickupLocation pickupLocation;
 
