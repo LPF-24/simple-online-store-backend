@@ -16,7 +16,11 @@ public class PickupLocationMapper {
         return modelMapper.map(dto, PickupLocation.class);
     }
 
-    public PickupLocationResponseDTO mapPickupLocationToResponseDTO(PickupLocation pickupLocation) {
+    public PickupLocationResponseDTO mapEntityToResponse(PickupLocation pickupLocation) {
+        return modelMapper.map(pickupLocation, PickupLocationResponseDTO.class);
+    }
+
+    public PickupLocationResponseDTO mapPickupLocationRequestToResponseDTO(PickupLocation pickupLocation) {
         return modelMapper.map(pickupLocation, PickupLocationResponseDTO.class);
     }
 }
