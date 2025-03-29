@@ -33,7 +33,7 @@ public class PickupLocationService {
             locations = pickupLocationRepository.findByActiveTrue();
         }
 
-        return locations.stream().map(mapper::mapPickupLocationToResponseDTO).toList();
+        return locations.stream().map(mapper::mapPickupLocationRequestToResponseDTO).toList();
     }
 
     @Transactional
@@ -41,7 +41,7 @@ public class PickupLocationService {
     public PickupLocationResponseDTO addPickupLocation(PickupLocationRequestDTO dto) {
         PickupLocation pickupLocation = mapper.mapRequestTOPickupLocation(dto);
         pickupLocationRepository.save(pickupLocation);
-        return mapper.mapPickupLocationToResponseDTO(pickupLocation);
+        return mapper.mapPickupLocationRequestToResponseDTO(pickupLocation);
     }
 
     @Transactional
@@ -71,7 +71,7 @@ public class PickupLocationService {
         BeanUtils.copyProperties(dto, locationToUpdate, getNullPropertyNames(dto));
 
         pickupLocationRepository.save(locationToUpdate);
-        return mapper.mapPickupLocationToResponseDTO(locationToUpdate);
+        return mapper.mapPickupLocationRequestToResponseDTO(locationToUpdate);
     }
 
     private String[] getNullPropertyNames(Object source) {
