@@ -1,6 +1,8 @@
 application.yml
 docker-compose.yml
 db-init/
+src/main/java/com/simple_online_store_backend/validation/annotation/ValidProductsList.java
+src/main/java/com/simple_online_store_backend/validation/validator/ProductsValidator.java
 
 HELP.md
 target/
