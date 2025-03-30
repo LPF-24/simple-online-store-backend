@@ -4,11 +4,14 @@ import com.simple_online_store_backend.dto.PersonResponseDTO;
 import com.simple_online_store_backend.dto.PersonShortDTO;
 import com.simple_online_store_backend.dto.address.AddressResponseDTO;
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationResponseDTO;
+import com.simple_online_store_backend.dto.product.ProductShortDTO;
 import com.simple_online_store_backend.entity.PickupLocation;
 import com.simple_online_store_backend.enums.OrderStatus;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 @NoArgsConstructor
 @Getter
@@ -17,6 +20,8 @@ public class OrderResponseDTO {
     private OrderStatus status;
 
     private PersonShortDTO person;
+
+    private List<ProductShortDTO> products;
 
     private PickupLocationResponseDTO pickupLocation;
 
