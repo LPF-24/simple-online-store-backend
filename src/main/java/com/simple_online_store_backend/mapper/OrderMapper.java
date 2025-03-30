@@ -25,14 +25,14 @@ public class OrderMapper {
     public OrderResponseDTO mapEntityToResponse(Order order) {
         OrderResponseDTO dto = new OrderResponseDTO();
 
-        // 1. Копируем простые поля
+        // Копируем простые поля
         dto.setStatus(order.getStatus());
-        //dto.setPickupLocation(order.getPickupLocation());
+        // Если у тебя есть отдельный mapper для PickupLocation -> PickupLocationResponseDTO, вызывай его:
         PickupLocation pickupLocation = order.getPickupLocation();
+        //во избежание NullPointerException
         if (pickupLocation != null) {
             dto.setPickupLocation(pickupLocationMapper.mapEntityToResponse(pickupLocation));
         } else {
-            // либо ничего не делаем
             dto.setAddress(null);
         }
         // Если у тебя есть отдельный mapper для Address -> AddressResponseDTO, вызывай его:
@@ -40,11 +40,8 @@ public class OrderMapper {
         if (address != null) {
             dto.setAddress(addressMapper.mapAddressToResponseDTO(address));
         } else {
-            // либо ничего не делаем
             dto.setAddress(null);
         }
-        // Либо, если пока что нет, можешь просто передавать сразу order.getAddress()
-        // dto.setAddress(order.getAddress());
 
         // 2. Собираем PersonShortDTO вручную
         Person person = order.getPerson();

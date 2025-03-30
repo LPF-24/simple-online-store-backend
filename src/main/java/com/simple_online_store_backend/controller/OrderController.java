@@ -30,15 +30,11 @@ public class OrderController {
 
     @PostMapping("/create-order")
     public ResponseEntity<OrderResponseDTO> addOrder(@RequestBody @Valid OrderRequestDTO dto, BindingResult bindingResult) {
-        System.out.println("Method addOrder in Controller started");
         if (bindingResult.hasErrors()) {
-            System.out.println(bindingResult.getAllErrors());
             ErrorUtil.returnErrorsToClient(bindingResult);
         }
 
-        System.out.println("Middle of the method addOrder in Controller");
         OrderResponseDTO response = orderService.createOrder(dto);
-        System.out.println("Method addOrder in Controller ended");
         return ResponseEntity.ok(response);
     }
 }
