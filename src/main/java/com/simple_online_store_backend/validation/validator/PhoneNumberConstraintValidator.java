@@ -7,11 +7,24 @@ import jakarta.validation.ConstraintValidatorContext;
 public class PhoneNumberConstraintValidator implements ConstraintValidator<ValidPhoneNumber, String> {
     @Override
     public boolean isValid(String phoneNumber, ConstraintValidatorContext context) {
-        if (phoneNumber == null) {
-            return true;
+        if (phoneNumber == null) return true;
+
+        //хорошая практика, особенно если нужно выдать несколько ошибок за раз, а не останавливаться на первой.
+        boolean isValid = true;
+        context.disableDefaultConstraintViolation();
+
+        if (!phoneNumber.startsWith("+")) {
+            context.buildConstraintViolationWithTemplate("Phone number must start with +")
+                    .addConstraintViolation();
+            isValid = false;
         }
 
-        return phoneNumber.startsWith("+")
-                && phoneNumber.matches("\\+?[0-9\\- ]{7,20}");
+        if (!phoneNumber.matches("\\+?[0-9\\- ]{7,20}")) {
+            context.buildConstraintViolationWithTemplate("The phone number must contain between 7 and 20 characters")
+                    .addConstraintViolation();
+            isValid = false;
+        }
+
+        return isValid;
     }
 }
