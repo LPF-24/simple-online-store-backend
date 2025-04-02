@@ -1,4 +1,4 @@
-package com.simple_online_store_backend.dto;
+package com.simple_online_store_backend.dto.person;
 
 import com.simple_online_store_backend.validation.annotation.ValidDateOfBirth;
 import com.simple_online_store_backend.validation.annotation.ValidPassword;

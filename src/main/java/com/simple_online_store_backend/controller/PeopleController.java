@@ -1,12 +1,10 @@
 package com.simple_online_store_backend.controller;
 
-import com.simple_online_store_backend.dto.JwtResponse;
-import com.simple_online_store_backend.dto.LoginRequest;
-import com.simple_online_store_backend.dto.PersonResponseDTO;
+import com.simple_online_store_backend.dto.person.LoginRequest;
+import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

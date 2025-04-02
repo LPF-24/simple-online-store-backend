@@ -1,12 +1,8 @@
 package com.simple_online_store_backend.util;
 
-import com.simple_online_store_backend.dto.PersonRequestDTO;
-import com.simple_online_store_backend.entity.Person;
-import com.simple_online_store_backend.mapper.PersonConverter;
+import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.repository.PeopleRepository;
-import com.simple_online_store_backend.service.PersonDetailsService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
