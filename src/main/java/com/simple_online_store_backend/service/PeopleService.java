@@ -1,7 +1,7 @@
 package com.simple_online_store_backend.service;
 
-import com.simple_online_store_backend.dto.PersonRequestDTO;
-import com.simple_online_store_backend.dto.PersonResponseDTO;
+import com.simple_online_store_backend.dto.person.PersonRequestDTO;
+import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.entity.Address;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.mapper.PersonConverter;
@@ -9,7 +9,6 @@ import com.simple_online_store_backend.repository.PeopleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

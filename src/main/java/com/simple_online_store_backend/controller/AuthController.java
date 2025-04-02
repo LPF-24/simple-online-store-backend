@@ -1,8 +1,8 @@
 package com.simple_online_store_backend.controller;
 
 import com.simple_online_store_backend.dto.JwtResponse;
-import com.simple_online_store_backend.dto.LoginRequest;
-import com.simple_online_store_backend.dto.PersonRequestDTO;
+import com.simple_online_store_backend.dto.person.LoginRequest;
+import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
@@ -12,7 +12,6 @@ import com.simple_online_store_backend.service.RefreshTokenService;
 import com.simple_online_store_backend.util.PersonValidator;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

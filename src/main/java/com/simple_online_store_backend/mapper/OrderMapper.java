@@ -1,6 +1,6 @@
 package com.simple_online_store_backend.mapper;
 
-import com.simple_online_store_backend.dto.PersonShortDTO;
+import com.simple_online_store_backend.dto.person.PersonShortDTO;
 import com.simple_online_store_backend.dto.order.OrderRequestDTO;
 import com.simple_online_store_backend.dto.order.OrderResponseDTO;
 import com.simple_online_store_backend.entity.Address;

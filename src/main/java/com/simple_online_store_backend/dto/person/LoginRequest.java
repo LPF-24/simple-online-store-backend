@@ -1,4 +1,4 @@
-package com.simple_online_store_backend.dto;
+package com.simple_online_store_backend.dto.person;
 
 import lombok.Data;
 import lombok.Getter;
