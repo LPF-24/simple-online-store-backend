@@ -8,6 +8,7 @@ import com.simple_online_store_backend.mapper.PersonConverter;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,16 +23,18 @@ public class PeopleService {
     private final PeopleRepository peopleRepository;
     private final PersonConverter personConverter;
     private final PasswordEncoder passwordEncoder;
+    @Value("${admin.registration.code}")
+    private String adminCodeFromYml;
 
     @Transactional
-    public void register(PersonRequestDTO personRequestDTO) {
-        System.out.println("Method register started");
-        System.out.println("DTO: " + personRequestDTO);
-        Person person = personConverter.convertToPersonToRequest(personRequestDTO);
-        person.setRole("ROLE_USER");
-        System.out.println("Middle of the method register");
+    public void register(PersonRequestDTO requestDTO) {
+        Person person = personConverter.convertToPersonToRequest(requestDTO);
+        if (requestDTO.getSpecialCode() != null && requestDTO.getSpecialCode().equals(adminCodeFromYml)) {
+            person.setRole("ROLE_ADMIN");
+        } else {
+            person.setRole("ROLE_USER");
+        }
         peopleRepository.saveAndFlush(person);
-        System.out.println("Method register ended");
     }
 
     public List<PersonResponseDTO> getAllConsumers() {

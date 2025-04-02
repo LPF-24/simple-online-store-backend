@@ -35,4 +35,6 @@ public class PersonRequestDTO {
 
     @NotNull(message = "You must accept the terms and conditions")
     private Boolean agreementAccepted;
+
+    private String specialCode;
 }
