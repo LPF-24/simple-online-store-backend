@@ -12,6 +12,9 @@ import com.simple_online_store_backend.service.RefreshTokenService;
 import com.simple_online_store_backend.util.PersonValidator;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,6 +32,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
+@RequiredArgsConstructor
 public class AuthController {
     private final JWTUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
@@ -36,16 +40,7 @@ public class AuthController {
     private final PersonValidator personValidator;
     private final RefreshTokenService refreshTokenService;
     private final PersonDetailsService personDetailsService;
-
-    @Autowired
-    public AuthController(JWTUtil jwtUtil, AuthenticationManager authenticationManager, PeopleService peopleService, PersonValidator personValidator, RefreshTokenService refreshTokenService, PersonDetailsService personDetailsService) {
-        this.jwtUtil = jwtUtil;
-        this.authenticationManager = authenticationManager;
-        this.peopleService = peopleService;
-        this.personValidator = personValidator;
-        this.refreshTokenService = refreshTokenService;
-        this.personDetailsService = personDetailsService;
-    }
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticate(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
@@ -96,15 +91,15 @@ public class AuthController {
     @PostMapping("/registration")
     public ResponseEntity<HttpStatus> performRegistration(@RequestBody @Valid PersonRequestDTO dto,
                                                           BindingResult bindingResult) {
-        System.out.println("Beginning of the method performRegistration");
+        logger.info("Beginning of the method performRegistration");
         personValidator.validate(dto, bindingResult);
-        System.out.println("Validation with personValidator was successful");
+        logger.info("Validation with personValidator was successful");
         if (bindingResult.hasErrors())
             ErrorUtil.returnErrorsToClient(bindingResult);
-        System.out.println("Middle of the method");
+        logger.info("Middle of the method");
 
         peopleService.register(dto);
-        System.out.println("End of the method performRegistration");
+        logger.info("End of the method performRegistration");
         return ResponseEntity.ok(HttpStatus.OK);
     }
 

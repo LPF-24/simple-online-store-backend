@@ -5,6 +5,8 @@ import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PeopleController {
     private final PeopleService peopleService;
+    private static final Logger logger = LoggerFactory.getLogger(PeopleController.class);
 
     @GetMapping("/all-customers")
     public List<PersonResponseDTO> getAllCustomers() {
@@ -25,12 +28,12 @@ public class PeopleController {
 
     @RequestMapping(value = "/deactivate-account", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<String> deactivateAccount() {
-        System.out.println("Method deactivateAccount started");
+        logger.info("Method deactivateAccount started");
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         int userId = ((PersonDetails) authentication.getPrincipal()).getId();
         peopleService.deactivateUserAccount(userId);
-        System.out.println("Method deactivateAccount ended");
+        logger.info("Method deactivateAccount ended");
 
         return ResponseEntity.ok("Account has been deactivated.");
     }
