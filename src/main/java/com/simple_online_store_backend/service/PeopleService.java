@@ -3,8 +3,11 @@ package com.simple_online_store_backend.service;
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.entity.Address;
+import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.entity.Person;
+import com.simple_online_store_backend.enums.OrderStatus;
 import com.simple_online_store_backend.mapper.PersonConverter;
+import com.simple_online_store_backend.repository.OrderRepository;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ public class PeopleService {
     private final PeopleRepository peopleRepository;
     private final PersonConverter personConverter;
     private final PasswordEncoder passwordEncoder;
+    private final OrderRepository orderRepository;
     @Value("${admin.registration.code}")
     private String adminCodeFromYml;
 
@@ -43,10 +47,22 @@ public class PeopleService {
 
     @Transactional
     public void deactivateUserAccount(int userId) {
-        Person person = peopleRepository.findById(userId).orElseThrow(
-                () -> new EntityNotFoundException("User with this id wasn't found!"));
+        Person person = peopleRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User with this id wasn't found!"));
 
+        // 1. Отменяем все PENDING/PROCESSING заказы пользователя
+        List<Order> ordersToCancel = orderRepository.findByPerson(person).stream()
+                .filter(order -> order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.PROCESSING)
+                .toList();
+
+        for (Order order : ordersToCancel) {
+            order.setStatus(OrderStatus.CANCELLED);
+        }
+
+        // 2. Обновляем статус пользователя
         person.setIsDeleted(true);
+
+        // 3. Сохраняем всё (благодаря @Transactional, изменения каскадно применятся)
         peopleRepository.save(person);
     }
 
