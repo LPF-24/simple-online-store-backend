@@ -15,6 +15,8 @@ import com.simple_online_store_backend.repository.ProductRepository;
 import com.simple_online_store_backend.security.PersonDetails;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -33,13 +35,13 @@ public class OrderService {
     private final PeopleRepository peopleRepository;
     private final ProductRepository productRepository;
     private final AddressRepository addressRepository;
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_USER')")
     public OrderResponseDTO createOrder(OrderRequestDTO dto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
-        //TODO
         Person owner = peopleRepository.findByUserName(personDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -67,8 +69,9 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
         order.setProducts(products);
 
-        orderRepository.save(order);
-        return orderMapper.mapEntityToResponse(order);
+        Order savedOrder = orderRepository.save(order);
+        logger.info("Id of saved order: {}", savedOrder.getId());
+        return orderMapper.mapEntityToResponse(savedOrder);
     }
 
     @PreAuthorize("isAuthenticated()")

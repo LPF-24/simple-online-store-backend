@@ -26,6 +26,7 @@ public class OrderMapper {
         OrderResponseDTO dto = new OrderResponseDTO();
 
         // Копируем простые поля
+        dto.setId(order.getId());
         dto.setStatus(order.getStatus());
         // Если у тебя есть отдельный mapper для PickupLocation -> PickupLocationResponseDTO, вызывай его:
         PickupLocation pickupLocation = order.getPickupLocation();
