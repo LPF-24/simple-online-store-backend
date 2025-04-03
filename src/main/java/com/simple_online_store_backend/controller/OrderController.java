@@ -28,6 +28,11 @@ public class OrderController {
         return ResponseEntity.ok(listOrders);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponseDTO> getOrder(@PathVariable("id") int orderId) {
+        return ResponseEntity.ok(orderService.getOrderById(orderId));
+    }
+
     @PostMapping("/create-order")
     public ResponseEntity<OrderResponseDTO> addOrder(@RequestBody @Valid OrderRequestDTO dto, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
