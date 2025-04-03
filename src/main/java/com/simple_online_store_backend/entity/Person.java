@@ -48,6 +48,6 @@ public class Person {
 
     @ManyToOne
     @JoinColumn(name = "address_id")
-    @OnDelete(action = OnDeleteAction.SET_NULL)
+    //@OnDelete(action = OnDeleteAction.SET_NULL)
     private Address address;
 }

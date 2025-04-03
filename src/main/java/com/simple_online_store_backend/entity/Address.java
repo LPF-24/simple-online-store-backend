@@ -32,9 +32,9 @@ public class Address {
     @Column(name = "postal_code", length = 20)
     private String postalCode;
 
-    @OneToMany(mappedBy = "address", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "address", fetch = FetchType.LAZY)
     private List<Person> residents;  // Было users → стало residents (чтобы было понятнее)
 
-    @OneToMany(mappedBy = "address", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "address", fetch = FetchType.LAZY)
     private List<Order> orders;
 }

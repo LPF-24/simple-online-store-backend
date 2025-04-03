@@ -35,17 +35,17 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "person_id")
-    @OnDelete(action = OnDeleteAction.SET_NULL)
+    //@OnDelete(action = OnDeleteAction.SET_NULL)
     private Person person;
 
     @ManyToOne
     @JoinColumn(name = "pickup_location_id")
-    @OnDelete(action = OnDeleteAction.SET_NULL)
+    //@OnDelete(action = OnDeleteAction.SET_NULL)
     private PickupLocation pickupLocation;
 
     @ManyToOne
     @JoinColumn(name = "address_id")
-    @OnDelete(action = OnDeleteAction.SET_NULL)
+    //@OnDelete(action = OnDeleteAction.SET_NULL)
     private Address address;
 }
 

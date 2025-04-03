@@ -30,7 +30,7 @@ public class OrderController {
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDTO> getOrder(@PathVariable("id") int orderId) {
-        return ResponseEntity.ok(orderService.getOrderById(orderId));
+        return ResponseEntity.ok(orderService.getOrderByOrderId(orderId));
     }
 
     @PostMapping("/create-order")
@@ -40,6 +40,16 @@ public class OrderController {
         }
 
         OrderResponseDTO response = orderService.createOrder(dto);
+        return ResponseEntity.ok(response);
+    }
+
+    @RequestMapping(value = "/{id}/update-order", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<OrderResponseDTO> addOrder(@RequestBody @Valid OrderRequestDTO dto,
+                                                     @PathVariable("id") int orderId, BindingResult bindingResult) {
+        if (bindingResult.hasErrors())
+            ErrorUtil.returnErrorsToClient(bindingResult);
+
+        OrderResponseDTO response = orderService.updateOrder(orderId, dto);
         return ResponseEntity.ok(response);
     }
 }
