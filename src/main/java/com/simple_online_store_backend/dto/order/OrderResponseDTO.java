@@ -15,6 +15,8 @@ import java.util.List;
 @Getter
 @Setter
 public class OrderResponseDTO {
+    private Integer id;
+
     private OrderStatus status;
 
     private PersonShortDTO person;

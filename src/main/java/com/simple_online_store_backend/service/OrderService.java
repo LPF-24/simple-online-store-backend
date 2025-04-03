@@ -15,8 +15,10 @@ import com.simple_online_store_backend.repository.ProductRepository;
 import com.simple_online_store_backend.security.PersonDetails;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,7 @@ public class OrderService {
     public OrderResponseDTO createOrder(OrderRequestDTO dto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+        //TODO
         Person owner = peopleRepository.findByUserName(personDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -66,6 +69,26 @@ public class OrderService {
 
         orderRepository.save(order);
         return orderMapper.mapEntityToResponse(order);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public OrderResponseDTO getOrderById(int orderId) {
+        Order foundOrder = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order with ID " + orderId + " not found"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+        String role = personDetails.getAuthorities().stream()
+                .findFirst().map(GrantedAuthority::getAuthority)
+                .orElse("ROLE_USER");
+
+        if (!role.equals("ROLE_ADMIN")) {
+            if (foundOrder.getPerson() == null || !foundOrder.getPerson().getId().equals(personDetails.getId())) {
+                throw new AccessDeniedException("You are not authorized to view this order");
+            }
+        }
+
+        return orderMapper.mapEntityToResponse(foundOrder);
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
