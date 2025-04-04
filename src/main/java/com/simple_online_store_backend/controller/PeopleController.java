@@ -43,4 +43,10 @@ public class PeopleController {
         peopleService.restoreAccount(loginRequest.getUsername(), loginRequest.getPassword());
         return ResponseEntity.ok("Account successfully restored");
     }
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<PersonResponseDTO> getProfile() {
+        PersonResponseDTO response = peopleService.getCurrentUserInfo();
+        return ResponseEntity.ok(response);
+    }
 }
