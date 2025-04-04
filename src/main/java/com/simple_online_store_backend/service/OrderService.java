@@ -105,7 +105,26 @@ public class OrderService {
         return orderRepository.findByPerson(customer).stream().map(orderMapper::mapEntityToResponse).toList();
     }
 
-    /*@Transactional
+    @Transactional
     @PreAuthorize("hasRole('ROLE_USER')")
-    public OrderResponseDTO */
+    public OrderResponseDTO cancelOrder(int orderId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order with ID " + orderId + " not found"));
+
+        if (!order.getPerson().getId().equals(personDetails.getId())) {
+            throw new AccessDeniedException(("You are not authorized to cancel this order"));
+        }
+
+        if (!order.getStatus().equals(OrderStatus.PENDING)) {
+            throw new ValidationException("Only orders with status PENDING can be cancelled");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+        return orderMapper.mapEntityToResponse(order);
+    }
 }
