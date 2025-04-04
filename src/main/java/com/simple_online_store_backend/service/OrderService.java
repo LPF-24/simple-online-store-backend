@@ -127,4 +127,27 @@ public class OrderService {
 
         return orderMapper.mapEntityToResponse(order);
     }
+
+    @Transactional
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public OrderResponseDTO reactivateOrder(int orderId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order with ID " + orderId + " not found"));
+
+        if (!order.getPerson().getId().equals(personDetails.getId())) {
+            throw new AccessDeniedException(("You are not authorized to reactivate this order"));
+        }
+
+        if (!order.getStatus().equals(OrderStatus.CANCELLED)) {
+            throw new ValidationException("Only orders with status CANCELLED can be reactivated");
+        }
+
+        order.setStatus(OrderStatus.PENDING);
+        orderRepository.save(order);
+
+        return orderMapper.mapEntityToResponse(order);
+    }
 }

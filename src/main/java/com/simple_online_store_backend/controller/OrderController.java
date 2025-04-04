@@ -56,4 +56,10 @@ public class OrderController {
         OrderResponseDTO response = orderService.cancelOrder(orderId);
         return ResponseEntity.ok(response);
     }
+
+    @RequestMapping(value = "/{id}/reactivate-order", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<OrderResponseDTO> reactivateOrder(@PathVariable("id") int orderId) {
+        OrderResponseDTO response = orderService.reactivateOrder(orderId);
+        return ResponseEntity.ok(response);
+    }
 }
