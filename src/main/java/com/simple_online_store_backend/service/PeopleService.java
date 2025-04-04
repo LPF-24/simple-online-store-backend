@@ -9,10 +9,14 @@ import com.simple_online_store_backend.enums.OrderStatus;
 import com.simple_online_store_backend.mapper.PersonConverter;
 import com.simple_online_store_backend.repository.OrderRepository;
 import com.simple_online_store_backend.repository.PeopleRepository;
+import com.simple_online_store_backend.security.PersonDetails;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,5 +94,16 @@ public class PeopleService {
         return Optional.ofNullable(person.getAddress())
                 .map(Address::getId)
                 .orElseThrow(() -> new EntityNotFoundException("The user has not yet specified their address."));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public PersonResponseDTO getCurrentUserInfo() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+
+        Person person = peopleRepository.findById(personDetails.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        return personConverter.convertToResponseDTO(person);
     }
 }
