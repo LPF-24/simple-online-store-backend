@@ -80,7 +80,7 @@ public class SecurityConfig {
                                 "/people/all-customers", "/people/restore-account", "/product").permitAll()
                         .requestMatchers("/pickup/all-pickup-location", "/orders/{id}").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .requestMatchers("/address/add-address", "/address/update-address",
-                                "/people/deactivate-account", "/orders/create-order", "/orders/all-my-orders").hasAuthority("ROLE_USER")
+                                "/people/deactivate-account", "/orders/create-order", "/orders/all-my-orders", "/orders/{id}/cancel-order").hasAuthority("ROLE_USER")
                         .requestMatchers("/product/add-product", "/product/{id}/update-product",
                                 "/pickup/add-pickup-location", "/pickup/{id}/close-pick-up-location", "/pickup/{id}/open-pick-up-location",
                                 "/pickup/{id}/update-pick-up-location", "/orders").hasAuthority("ROLE_ADMIN")

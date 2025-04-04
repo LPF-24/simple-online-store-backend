@@ -51,4 +51,9 @@ public class OrderController {
         return ResponseEntity.ok(adminService.findAllOrders());
     }
 
+    @RequestMapping(value = "/{id}/cancel-order", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<OrderResponseDTO> cancelOrder(@PathVariable("id") int orderId) {
+        OrderResponseDTO response = orderService.cancelOrder(orderId);
+        return ResponseEntity.ok(response);
+    }
 }
