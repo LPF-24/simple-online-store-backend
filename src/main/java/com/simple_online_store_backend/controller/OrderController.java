@@ -46,6 +46,17 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    @RequestMapping(value = "/{id}", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<OrderResponseDTO> editOrder(@PathVariable("id") int orderId,
+                                                      @RequestBody @Valid OrderRequestDTO dto,
+                                                      BindingResult bindingResult) {
+        if (bindingResult.hasErrors())
+            ErrorUtil.returnErrorsToClient(bindingResult);
+
+        OrderResponseDTO response = orderService.updateOrder(orderId, dto);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping()
     public ResponseEntity<List<OrderResponseDTO>> getAllOrders() {
         return ResponseEntity.ok(adminService.findAllOrders());

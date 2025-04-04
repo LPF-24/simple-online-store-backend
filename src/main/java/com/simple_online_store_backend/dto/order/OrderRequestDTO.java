@@ -9,12 +9,10 @@ import com.simple_online_store_backend.validation.annotation.AccountActive;
 import com.simple_online_store_backend.validation.annotation.ValidDeliveryOption;
 import com.simple_online_store_backend.validation.annotation.ValidPickupLocation;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @NoArgsConstructor
