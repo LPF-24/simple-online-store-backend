@@ -87,15 +87,16 @@ public class SecurityConfig {
                                 "/pickup/{id}/update-pick-up-location", "/orders").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
                             String requestUri = request.getRequest().getRequestURI();
-                            // извлекаем userId из URL
                             String userId = requestUri.replaceAll("\\D+", "");
 
-                            // получаем principal (PersonDetails) из SecurityContext
                             PersonDetails personDetails = (PersonDetails) authentication.get().getPrincipal();
                             String currentUserId = String.valueOf(personDetails.getId());
 
                             boolean isOwner = userId.equals(currentUserId);
-                            return new AuthorizationDecision(isOwner);
+                            boolean isAdmin = personDetails.getAuthorities().stream()
+                                    .anyMatch(authentic -> authentic.getAuthority().equals("ROLE_ADMIN"));
+
+                            return new AuthorizationDecision(isOwner || isAdmin);
                         })
                         .anyRequest().authenticated()
                 )
