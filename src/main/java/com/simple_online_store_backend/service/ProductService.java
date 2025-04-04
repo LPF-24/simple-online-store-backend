@@ -48,6 +48,12 @@ public class ProductService {
         return productMapper.mapProductToResponseDTO(productToUpdate);
     }
 
+    @PreAuthorize("isAuthenticated()")
+    public List<ProductResponseDTO> getAvailableProducts() {
+        List<Product> available = productRepository.findAllByAvailabilityTrue();
+        return available.stream().map(productMapper::mapProductToResponseDTO).toList();
+    }
+
     //этот метод getNullPropertyNames возвращает список имён полей объекта, значение которых равно null
     private String[] getNullPropertyNames(Object source) {
         try {

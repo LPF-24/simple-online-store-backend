@@ -6,7 +6,6 @@ import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
@@ -43,5 +42,11 @@ public class ProductController {
 
         ProductResponseDTO responseDTO = productService.editProduct(dto, productId);
         return ResponseEntity.ok(responseDTO);
+    }
+
+    @GetMapping("/all-active-products")
+    public ResponseEntity<List<ProductResponseDTO>> findAvailableProducts() {
+        List<ProductResponseDTO> activeProducts = productService.getAvailableProducts();
+        return ResponseEntity.ok(activeProducts);
     }
 }

@@ -78,7 +78,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/registration", "/auth/refresh", "/auth/logout", "/error",
                                 "/people/all-customers", "/people/restore-account", "/product").permitAll()
-                        .requestMatchers("/pickup/all-pickup-location", "/orders/{id}").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        .requestMatchers("/pickup/all-pickup-location", "/orders/{id}", "/product/all-active-products").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .requestMatchers("/address/add-address", "/address/update-address",
                                 "/people/deactivate-account", "/orders/create-order", "/orders/all-my-orders", "/orders/{id}/cancel-order",
                                 "/orders/{id}/reactivate-order").hasAuthority("ROLE_USER")
