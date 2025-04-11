@@ -76,6 +76,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // отключаем CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Swagger 3/OpenAPI 3 пути — разрешаем доступ
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
                         .requestMatchers("/auth/login", "/auth/registration", "/auth/refresh", "/auth/logout", "/error",
                                 "/people/all-customers", "/people/restore-account", "/product").permitAll()
                         .requestMatchers("/pickup/all-pickup-location", "/orders/{id}", "/product/all-active-products").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
