@@ -6,6 +6,7 @@ import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.AddressService;
 import com.simple_online_store_backend.service.PeopleService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ public class AddressController {
     private final AddressService addressService;
     private final PeopleService peopleService;
 
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/add-address")
     public ResponseEntity<AddressResponseDTO> addAddress(@RequestBody @Valid AddressRequestDTO dto,
                                                          BindingResult bindingResult) {
@@ -33,6 +35,7 @@ public class AddressController {
         return ResponseEntity.ok(address);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @RequestMapping(value = "/update-address", method = {RequestMethod.PATCH, RequestMethod.POST})
     public ResponseEntity<AddressResponseDTO> updateAddress(@RequestBody @Valid AddressRequestDTO dto,
                                                             BindingResult bindingResult) {

@@ -4,6 +4,7 @@ import com.simple_online_store_backend.dto.person.LoginRequest;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,7 @@ public class PeopleController {
         return peopleService.getAllConsumers();
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @RequestMapping(value = "/deactivate-account", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<String> deactivateAccount() {
         logger.info("Method deactivateAccount started");
@@ -44,6 +46,7 @@ public class PeopleController {
         return ResponseEntity.ok("Account successfully restored");
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}/profile")
     public ResponseEntity<PersonResponseDTO> getProfile() {
         PersonResponseDTO response = peopleService.getCurrentUserInfo();

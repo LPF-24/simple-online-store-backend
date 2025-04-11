@@ -4,6 +4,7 @@ import com.simple_online_store_backend.dto.product.ProductRequestDTO;
 import com.simple_online_store_backend.dto.product.ProductResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.service.ProductService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/add-product")
     public ResponseEntity<ProductResponseDTO> addProduct(@RequestBody @Valid ProductRequestDTO dto,
                                                          BindingResult bindingResult) {
@@ -33,6 +35,7 @@ public class ProductController {
         return ResponseEntity.ok(responseDTO);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @RequestMapping(value = "/{id}/update-product", method = {RequestMethod.POST, RequestMethod.PATCH})
     public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable("id") int productId,
                                                             @RequestBody @Valid ProductRequestDTO dto,
@@ -44,6 +47,7 @@ public class ProductController {
         return ResponseEntity.ok(responseDTO);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/all-active-products")
     public ResponseEntity<List<ProductResponseDTO>> findAvailableProducts() {
         List<ProductResponseDTO> activeProducts = productService.getAvailableProducts();
