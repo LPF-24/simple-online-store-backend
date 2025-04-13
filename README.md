@@ -1,6 +1,10 @@
 # 🛒 Simple Online Store Backend
 
-This is a backend part of a Java-based online store project with role-based authorization, session handling via JWT tokens, Redis-powered refresh tokens, and RESTful APIs documented via OpenAPI.
+This is the backend part of a Java-based online store with role-based authorization, JWT-based session handling, and Redis-backed refresh token rotation.
+
+The application follows a clean layered architecture with clear separation of concerns: controllers handle HTTP requests, services encapsulate business logic, and repositories manage data access.
+
+RESTful APIs are documented using OpenAPI and can be explored interactively via Swagger UI.
 
 ## 🚀 Technologies Used
 
@@ -32,15 +36,14 @@ docker-compose up --build
 - Backend: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 
-## 🔐 Access
+## 👥 Sample Accounts
 
-### Sample Users
 | Role  | Username | Password   |
 |-------|----------|------------|
 | Admin | `test2`  | `Test234!` |
-| User  | `jack`   | `Test234!`  |
+| User  | `jack`   | `Test234!` |
 
-## 🔄 JWT Authentication
+## 🔐 JWT Authentication
 
 1. `POST /auth/login` returns Access + Refresh tokens
 2. Access token is passed via `Authorization: Bearer ...`
@@ -86,10 +89,16 @@ Interactive API available at:
 http://localhost:8080/swagger-ui.html
 ```
 
+## 📌 Project Status
+
+✅ Core functionality is complete.  
+🛠 JavaDoc and integration testing to be added in future iterations.
+
 ## 👤 Author
 
-**LPF-24** — aspiring Java Developer  
-GitHub: [LPF-24](https://github.com/LPF-24)
+**LPF-24** — aspiring Java backend developer building real-world projects with Spring, REST APIs, and Docker.
+
+GitHub: [@LPF-24](https://github.com/LPF-24)
 
 ## 📄 License
 
