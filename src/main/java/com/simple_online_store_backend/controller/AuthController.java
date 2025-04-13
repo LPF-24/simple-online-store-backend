@@ -15,7 +15,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -56,28 +55,28 @@ public class AuthController {
                     .map(GrantedAuthority::getAuthority)
                     .orElse("ROLE_USER");
 
-            //String jwt = jwtUtil.generateToken(personDetails.getUsername(), role);
-            //Генерируем access и refresh токены
+            // Generates JWT access and refresh tokens for the authenticated user.
             String accessToken = jwtUtil.generateToken(personDetails.getUsername(), role);
             String refreshToken = jwtUtil.generateRefreshToken(personDetails.getUsername());
 
-            //Сохраняем refresh токен в Redis (по username)
+            //Save refresh token in Redis (by username)
             refreshTokenService.saveRefreshToken(personDetails.getUsername(), refreshToken);
 
-            //Устанавливаем refresh токен в HttpOnly Cookie (не будет доступен через JS)
+            // Stores the refresh token in an HttpOnly cookie to prevent client-side access.
             ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true) //JS не сможет прочитать эту cookie → защита от XSS-атак.
-                    .secure(false) //true - только по HTTPS
-                    .path("/") //Указывает, что cookie будет отправляться для всех путей сайта (/api, /auth, и т.д.).
-                    //Если указать, например, .path("/auth") — cookie будет работать только там.
+                    .httpOnly(true) // JS won't be able to read this cookie → XSS attack protection.
+                    .secure(false) // true - only via HTTPS
+                    .path("/") // Specifies that the cookie will be sent for all site paths (/api, /auth, etc.)
                     .maxAge(Duration.ofDays(7))
-                    .sameSite("Strict") //cookie не отправляется с внешних сайтов (жесткая защита)
+                    .sameSite("Strict") // Cookies are not sent from external sites (hard protection)
                     .build();
-            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString()); //Устанавливает cookie в HTTP-ответе
-            // (добавляет заголовок Set-Cookie), чтобы браузер сохранил её,
-            // т.к. refresh токен на стороне клиента хранится в памяти браузера
+            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+            /*
+            Note:
+            Sets a cookie in the HTTP response (adds a Set-Cookie header) so that the browser will save it, since the client-side refresh token is stored in the browser's memory
+            */
 
-            //возвращаем access токен и ID пользователя в теле ответа
+            // Return the access token and user ID in the response body
             return ResponseEntity.ok(new JwtResponse(accessToken, personDetails.getId(), personDetails.getUsername()));
         } catch (LockedException e) {
             return ResponseEntity.status(HttpStatus.LOCKED)

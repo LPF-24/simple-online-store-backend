@@ -45,7 +45,7 @@ public class OrderService {
         Person owner = peopleRepository.findByUserName(personDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Проверка активности аккаунта
+        // Verifies whether the account is active or marked as deleted.
         if (owner.getIsDeleted()) {
             throw new ValidationException("Your account is deactivated. Please restore your account before placing an order.");
         }

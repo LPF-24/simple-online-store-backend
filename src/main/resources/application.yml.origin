@@ -3,7 +3,8 @@ spring:
     name:
 
   datasource:
-    url: jdbc:postgresql://
+  # PostgreSQL is running in a Docker container under the hostname 'db'
+    url: jdbc:postgresql:// # Connect to the database inside the Docker container
     username:
     password:
 

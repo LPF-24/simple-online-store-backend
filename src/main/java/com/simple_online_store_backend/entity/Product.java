@@ -28,7 +28,7 @@ public class Product {
     @Column(name = "product_description", nullable = false, length = 600)
     private String productDescription;
 
-    //максимум 10 цифр, из них 2 после запятой
+    // Allows up to 10 digits in total, including 2 digits after the decimal point
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 

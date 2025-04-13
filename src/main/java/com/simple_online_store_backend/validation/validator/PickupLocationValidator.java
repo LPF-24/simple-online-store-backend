@@ -18,7 +18,6 @@ public class PickupLocationValidator implements ConstraintValidator<ValidPickupL
         if (location == null)
             return true;
 
-        // Загружаем пункт выдачи из БД
         Optional<PickupLocation> optional = pickupLocationRepository.findById(location.getId());
 
         if (optional.isEmpty() || !Boolean.TRUE.equals(optional.get().getActive())) {

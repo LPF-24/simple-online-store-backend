@@ -2,7 +2,6 @@ package com.simple_online_store_backend.dto.product;
 
 import com.simple_online_store_backend.enums.ProductCategory;
 import com.simple_online_store_backend.validation.annotation.ValidProductCategory;
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,8 +23,8 @@ public class ProductRequestDTO {
 
     @NotNull(message = "Price is required")
     @Digits(integer = 8, fraction = 2, message = "The price can include a maximum of 10 digits: 8 before the decimal point and 2 after the decimal point.")
-    //Значение может быть равно 0.01 или больше, но не меньше
-    @DecimalMin(value = "0.01", inclusive = true, message = "Price must be at least 0.01")
+    // Accepts values greater than or equal to 0.01
+    @DecimalMin(value = "0.01", message = "Price must be at least 0.01")
     private BigDecimal price;
 
     @ValidProductCategory

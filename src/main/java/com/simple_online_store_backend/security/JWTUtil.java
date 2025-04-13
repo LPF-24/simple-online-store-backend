@@ -21,7 +21,7 @@ public class JWTUtil {
 
         return JWT.create()
                 .withSubject("User details")
-                //в JWT хранятся только ключевые данные (claims), а остальные данные получаются из БД при запросах.
+                // Only key claims are stored in the JWT; the rest is fetched from the database on request
                 .withClaim("username", username)
                 .withClaim("role", role)
                 .withIssuedAt(new Date())

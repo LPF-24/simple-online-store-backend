@@ -43,7 +43,7 @@ public class Person {
     private Boolean isDeleted = false;
 
     @OneToMany(mappedBy = "person", fetch = FetchType.LAZY)
-    @JsonIgnore // <-- Jackson не будет пытаться сериализовать это поле
+    @JsonIgnore // Instructs Jackson to ignore this field during serialization.
     private List<Order> orders;
 
     @ManyToOne

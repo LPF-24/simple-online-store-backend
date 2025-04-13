@@ -2,13 +2,10 @@ package com.simple_online_store_backend.config;
 
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PersonDetailsService;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
@@ -18,7 +15,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -32,14 +28,13 @@ public class SecurityConfig {
 
     private final JWTFilter jwtFilter;
 
-    // Конструктор только для тех зависимостей, которые действительно нужны как поля
     public SecurityConfig(JWTFilter jwtFilter) {
         this.jwtFilter = jwtFilter;
     }
 
     /**
-     * Бин провайдера аутентификации.
-     * Он подключает PersonDetailsService и PasswordEncoder.
+     * Authentication provider bean.
+     * It hooks up PersonDetailsService and PasswordEncoder.
      */
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider(PersonDetailsService personDetailsService,
@@ -51,32 +46,29 @@ public class SecurityConfig {
     }
 
     /**
-     * Бин AuthenticationManager – чтобы вы могли внедрить его в AuthController.
-     * В современных версиях Spring Security получаем билдер из HttpSecurity,
-     * регистрируем в нём наш DaoAuthenticationProvider и строим менеджер.
+     * AuthenticationManager bean - so you can inject it into AuthController.
+     * In modern versions of Spring Security, we get the builder from HttpSecurity,
+     * register our DaoAuthenticationProvider in it and build the manager.
      */
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http,
                                                        DaoAuthenticationProvider daoAuthenticationProvider) throws Exception {
-        //создаёт AuthenticationManagerBuilder, который управляет провайдерами аутентификации
+        // create an AuthenticationManagerBuilder that manages authentication providers
         return http.getSharedObject(AuthenticationManagerBuilder.class)
-                //используем созданный ранее daoAuthenticationProvider
+                // use the previously created daoAuthenticationProvider
                 .authenticationProvider(daoAuthenticationProvider)
                 .build();
     }
 
-    /**
-     * Настраиваем SecurityFilterChain: ставим цепочку фильтров, в том числе JWTFilter.
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    DaoAuthenticationProvider daoAuthenticationProvider) throws Exception {
         return http
-                .cors(Customizer.withDefaults()) // включение настройки межсайтовых запросов вручную
-                .csrf(AbstractHttpConfigurer::disable) // отключаем CSRF
+                .cors(Customizer.withDefaults()) // enable cross-site request settings manually
+                .csrf(AbstractHttpConfigurer::disable) // disable CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger 3/OpenAPI 3 пути — разрешаем доступ
+                        // Swagger 3/OpenAPI 3 paths - allow access
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
@@ -106,27 +98,23 @@ public class SecurityConfig {
                         })
                         .anyRequest().authenticated()
                 )
-                // Регистрируем провайдер (можно не указывать, если
-                // уже всё передаём в authenticationManager; но обычно дубликации не мешают)
+                /*
+                Register the provider (you don't have to specify it if you're already passing everything to authenticationManager;
+                 but usually duplications don't interfere)
+                 */
                 .authenticationProvider(daoAuthenticationProvider)
 
-                // Встраиваем наш JWT фильтр, который проверяет заголовок Authorization
+                // Embed a JWT filter that checks the Authorization header
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .build();
     }
 
-    /**
-     * Кодировщик паролей (нужен для DaoAuthenticationProvider).
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Ваши вспомогательные бины.
-     */
     @Bean
     public ModelMapper modelMapper() {
         return new ModelMapper();
