@@ -14,10 +14,13 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5173") // адрес фронтенда
-                        //OPTIONS — это технический HTTP-запрос, который браузер автоматически отправляет перед основным
-                        // запросом (POST, PUT и т.д.), чтобы проверить, разрешён ли кросс-доменный доступ
-                        // (то есть, запрос с одного домена на другой).
+                        .allowedOrigins("http://localhost:5173") // frontend address
+                        /*
+                        Explanation:
+                            OPTIONS is a technical HTTP request that the browser automatically sends before
+                            the main request (POST, PUT, etc.) to check if cross-domain access
+                            (that is, a request from one domain to another) is allowed.
+                         */
                         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);

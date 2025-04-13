@@ -15,17 +15,20 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-@ValidApartment //вешаем её на весь класс, чтобы сразу иметь доступ ко всем полям (housingType и apartment)
+@ValidApartment // Apply the annotation to the entire class to access all fields at once (e.g., housingType and apartment)
 @ValidPostalCode
 public class AddressRequestDTO {
     @NotEmpty(message = "City name can't be empty!")
     @Pattern(regexp = "^[A-Z][a-zA-Z \\-']{1,49}$",
             message = "City name must start with a capital letter and contain only letters, spaces, dashes or apostrophes")
-    /*Расшифровка:
-    ^ и $ — начало и конец строки.
-    [A-ZА-ЯЁ] — первая буква заглавная (латинская или кириллическая).
-    [a-zа-яёA-ZА-ЯЁ \-']{1,49} — остальные символы: буквы, пробелы, дефисы и апострофы, от 1 до 49 символов.
-    итого: от 2 до 50 символов.*/
+    /*
+     Breakdown of the regex:
+     ^ and $         — anchors marking the start and end of the string.
+     [A-Z]           — the first character must be an uppercase Latin letter.
+     [a-zA-Z \\-']   — the rest may include letters, spaces, dashes, and apostrophes.
+     {1,49}          — from 1 to 49 additional characters.
+     → Total length: 2 to 50 characters.
+    */
     private String city;
 
     @NotEmpty(message = "Street name can't be empty!")

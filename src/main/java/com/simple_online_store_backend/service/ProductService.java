@@ -54,40 +54,30 @@ public class ProductService {
         return available.stream().map(productMapper::mapProductToResponseDTO).toList();
     }
 
-    //этот метод getNullPropertyNames возвращает список имён полей объекта, значение которых равно null
+    // Returns names of properties that are null in the given object
     private String[] getNullPropertyNames(Object source) {
         try {
-            return Arrays.stream(Introspector.getBeanInfo(source.getClass(), Object.class) //получаем информацию об объекте
-                    .getPropertyDescriptors()) //получаем информацию о полях
-                    .map(PropertyDescriptor::getName) //получаем имя поля
-                    .filter(name -> { //проходим по именам
+            return Arrays.stream(Introspector.getBeanInfo(source.getClass(), Object.class)
+                    .getPropertyDescriptors()) // Get property metadata
+                    .map(PropertyDescriptor::getName) // Extract property names
+                    .filter(name -> { /// Filter out non-null properties
                         try {
                             return Objects.isNull(new PropertyDescriptor(name, source.getClass()).getReadMethod().invoke(source));
                         } catch (Exception e) {
-                            return false; //в случае если при проверке нулевое ли поле возникла ошибка, возвращаем false
+                            return false; // If error occurs, skip the property
                         }
                     })
-                    .toArray(String[]::new); //все ненулевые поля объединяем в массив
+                    .toArray(String[]::new);
         } catch (IntrospectionException e) {
-            throw new RuntimeException("error processing object properties", e); //если не удалось выполнить код в блоке try (возникла IntrospectionException), бросаем ошибку
+            throw new RuntimeException("error processing object properties", e);
         }
 
         /*
-        new PropertyDescriptor(name, source.getClass())
-        PropertyDescriptor — класс, который содержит метаинформацию о поле (геттеры и сеттеры).
-        Мы создаем дескриптор для поля с именем name, взятого из source.getClass() — т.е. у текущего класса объекта.
-        Например, если поле называется "price", создается PropertyDescriptor для price.
-
-        .getReadMethod()
-        Получает геттер для этого поля.
-        Например, для поля "price" вернется метод getPrice().
-
-        .invoke(source)
-        Вызывает геттер у объекта source.
-        Т.е. это аналог source.getPrice().
-        Возвращает значение поля — может быть null или не null.
-
-        Objects.isNull(...)
-        Просто проверка: результат вызова геттера == null.*/
+         Explanation:
+         - PropertyDescriptor(name, clazz) retrieves metadata about a property, including getters/setters.
+         - .getReadMethod() returns the getter (e.g., getPrice()).
+         - .invoke(source) calls the getter on the given object, like source.getPrice().
+         - Objects.isNull(...) checks whether the returned value is null.
+         */
     }
 }

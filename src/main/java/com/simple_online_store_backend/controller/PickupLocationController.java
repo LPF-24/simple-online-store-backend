@@ -28,7 +28,7 @@ public class PickupLocationController {
     @GetMapping("/all-pickup-location")
     public ResponseEntity<List<PickupLocationResponseDTO>> getAllPickupLocations() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        //особый порядок получения роли, чтобы не возникало ошибок
+        // Getting the user's role in a specific way to avoid nulls or mapping errors
         String role = ((PersonDetails) authentication.getPrincipal())
                 .getAuthorities().stream()
                 .findFirst()

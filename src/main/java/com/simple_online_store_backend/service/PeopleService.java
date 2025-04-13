@@ -54,7 +54,7 @@ public class PeopleService {
         Person person = peopleRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User with this id wasn't found!"));
 
-        // 1. Отменяем все PENDING/PROCESSING заказы пользователя
+        // 1. Cancel all PENDING/PROCESSING orders of the user
         List<Order> ordersToCancel = orderRepository.findByPerson(person).stream()
                 .filter(order -> order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.PROCESSING)
                 .toList();
@@ -63,10 +63,10 @@ public class PeopleService {
             order.setStatus(OrderStatus.CANCELLED);
         }
 
-        // 2. Обновляем статус пользователя
+        // 2. Update the user status
         person.setIsDeleted(true);
 
-        // 3. Сохраняем всё (благодаря @Transactional, изменения каскадно применятся)
+        // 3. Save everything (thanks to @Transactional, changes are cascaded)
         peopleRepository.save(person);
     }
 

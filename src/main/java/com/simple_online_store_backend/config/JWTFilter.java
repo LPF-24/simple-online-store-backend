@@ -52,7 +52,7 @@ public class JWTFilter extends OncePerRequestFilter {
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
-                                    null, // credentials (пароль) больше не нужен
+                                    null, // Credentials (password) are no longer needed
                                     List.of(new SimpleGrantedAuthority(role))
                             );
 
@@ -62,11 +62,14 @@ public class JWTFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             logger.error("Error in JWT filter: {}", e.getMessage(), e);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
-            return; // обязательно выйти, иначе произойдёт ошибка "двойной отправки": будет отправлена и ошибка
-            // и попытка filterChain.doFilter(request, response);
+            return;
+            /*
+            Be sure to exit, otherwise a "double send" error will occur: both the error and the attempt
+            will be sent filterChain.doFilter(request, response);
+             */
         }
 
-        filterChain.doFilter(request, response); // должно быть ВНЕ try/catch
+        filterChain.doFilter(request, response);
     }
 
 }

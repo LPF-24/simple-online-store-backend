@@ -12,23 +12,26 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
 
     @Bean
-    //RedisConnectionFactory — интерфейс, который умеет устанавливать соединения с Redis.
+    //RedisConnectionFactory - interface for establishing a connection to Redis.
     public RedisConnectionFactory redisConnectionFactory() {
-        //LettuceConnectionFactory() — реализация через Lettuce, современный асинхронный Redis-клиент на базе Netty.
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration("redis", 6379);
-        return new LettuceConnectionFactory(config); // можно заменить на Jedis, если используешь его
-        //JedisConnectionFactory, синхронный, более старый (его используют реже в новых проектах)
+        //LettuceConnectionFactory() — implementation via Lettuce, a modern asynchronous Redis client based on Netty.
+        return new LettuceConnectionFactory(config);
+        // LettuceConnectionFactory can be replaced with JedisConnectionFactory - synchronous, older
     }
 
     @Bean
     public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory factory) {
-        //Создаём объект RedisTemplate, через который будем читать/записывать данные в Redis.
+        // RedisTemplate - allows you to read/write data to Redis.
         RedisTemplate<String, String> template = new RedisTemplate<>();
-        template.setConnectionFactory(factory); //Подключаем шаблон к Redis-соединению (из первого бина).
-        //Указываем, что ключи должны храниться как обычные строки.
-        // Это нужно, чтобы в Redis ключ выглядел как "username" (а не двоичный набор байтов).
-        template.setKeySerializer(new StringRedisSerializer()); // сериализатор ключей
-        template.setValueSerializer(new StringRedisSerializer()); // сериализатор значений
+        template.setConnectionFactory(factory); // Connect the template to the Redis connection (from the first bean).
+        /*
+        Explanation:
+            Specify that keys should be stored as regular strings
+            - so that in Redis the key looks like "username" (and not a binary set of bytes).
+         */
+        template.setKeySerializer(new StringRedisSerializer()); // Specifies the serializer for Redis keys.
+        template.setValueSerializer(new StringRedisSerializer()); // Specifies the serializer for Redis values.
         return template;
     }
 }

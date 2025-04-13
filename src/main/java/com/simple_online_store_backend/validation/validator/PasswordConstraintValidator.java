@@ -21,7 +21,7 @@ public class PasswordConstraintValidator implements ConstraintValidator<ValidPas
                 new CharacterRule(EnglishCharacterData.UpperCase, 1),
                 new CharacterRule(EnglishCharacterData.Digit, 1),
                 new CharacterRule(EnglishCharacterData.Special, 1),
-                new WhitespaceRule() //не должно быть пробелов
+                new WhitespaceRule() // Password must not contain spaces
         ));
 
         RuleResult result = validator.validate(new PasswordData(password));
@@ -30,10 +30,10 @@ public class PasswordConstraintValidator implements ConstraintValidator<ValidPas
             return true;
         }
 
-        context.disableDefaultConstraintViolation(); //Отключает стандартное сообщение об ошибке валидации.
+        context.disableDefaultConstraintViolation(); // Disables the default validation error message.
         context.buildConstraintViolationWithTemplate(
-                String.join(", ", validator.getMessages(result)) //Получает детальное сообщение из Passay
-        ).addConstraintViolation(); //Добавляет сообщение об ошибке в контекст валидации
+                String.join(", ", validator.getMessages(result)) // Gets a detailed message from Passay
+        ).addConstraintViolation(); // Adds an error message to the validation context
 
         return false;
     }

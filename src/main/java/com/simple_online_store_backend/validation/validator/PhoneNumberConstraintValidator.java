@@ -9,7 +9,7 @@ public class PhoneNumberConstraintValidator implements ConstraintValidator<Valid
     public boolean isValid(String phoneNumber, ConstraintValidatorContext context) {
         if (phoneNumber == null) return true;
 
-        //хорошая практика, особенно если нужно выдать несколько ошибок за раз, а не останавливаться на первой.
+        // Recommended when you want to collect multiple validation errors instead of stopping at the first.
         boolean isValid = true;
         context.disableDefaultConstraintViolation();
 

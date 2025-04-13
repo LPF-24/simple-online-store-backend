@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class RefreshTokenService {
-    // RedisTemplate — бин, через который Spring взаимодействует с Redis
+    // RedisTemplate allows Spring to interact with Redis
     private final RedisTemplate<String, String> redisTemplate;
     private final static long REFRESH_TOKEN_EXPIRATION_MINUTES = 60 * 24 * 7;
 
@@ -15,21 +15,21 @@ public class RefreshTokenService {
         this.redisTemplate = redisTemplate;
     }
 
-    // Сохраняем refresh токен в Redis по username с истечением срока
+    // Stores the refresh token in Redis using the username as the key.
     public void saveRefreshToken(String username, String refreshToken) {
-        redisTemplate.opsForValue() // способ работы с Redis, когда ты хочешь использовать простые пары ключ–значение.
-        // Это аналог обычного Map (например, "user1" -> "refresh_token").
+        redisTemplate.opsForValue() // The way to work with Redis when you want to use simple key-value pairs.
+                // Analogous to a regular Map (e.g. "user1" -> "refresh_token").
                 .set(username, refreshToken, REFRESH_TOKEN_EXPIRATION_MINUTES, TimeUnit.MINUTES);
-        //TimeUnit.MINUTES — это единица измерения времени, которую использует Redis при установке TTL (время жизни ключа).
-        //Вместе с REFRESH_TOKEN_EXPIRATION_MINUTES говорит: «удалить refresh token через 10080 минут» (7 дней).
+        //TimeUnit.MINUTES is the time unit that Redis uses when setting the TTL (time to live of a key).
+        //Together with REFRESH_TOKEN_EXPIRATION_MINUTES it means: "delete refresh token after 10080 minutes" (7 days).
     }
 
-    // Получаем refresh токен по username
+    // Get refresh token by username
     public String getRefreshToken(String username) {
         return redisTemplate.opsForValue().get(username);
     }
 
-    // Удаляем refresh токен по username (например, при logout)
+    // Delete refresh token by username (for example, when logging out)
     public void deleteRefreshToken(String username) {
         redisTemplate.delete(username);
     }
