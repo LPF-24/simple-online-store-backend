@@ -1,6 +1,11 @@
 package com.simple_online_store_backend.util;
 
 public class SwaggerConstants {
+    // Common constants for several entities.
+    public static final String ID_DESC = "Unique identifier of the ";
+    public static final String ID_EXAMPLE = "42";
+
+    // Constants for classes related to the Person entity.
     public static final String USERNAME_DESC = "Username of the person";
     public static final String USERNAME_EXAMPLE = "john_doe";
 
@@ -21,6 +26,15 @@ public class SwaggerConstants {
 
     public static final String SPECIAL_CODE_DESC = "Required to register a user as an admin";
 
-    public static final String ID_DESC = "Unique identifier of the person";
-    public static final String ID_EXAMPLE = "42";
+    // Constants for classes related to the PickupLocation and Address entities
+    public static final String CITY_DESC = "The city where the order pick-up location or address is located " +
+            "(starting with a capital letter and contain only letters, spaces, dashes or apostrophes)";
+    public static final String CITY_EXAMPLE = "New York";
+
+    public static final String STREET_DESC = "Street where the pick-up point is located or address";
+    public static final String STREET_EXAMPLE = "Main Street";
+
+    public static final String HOUSE_NUMBER_DESC = "The house number where the pick-up point is located or the address " +
+            "(contains only numbers and letters)";
+    public static final String HOUSE_NUMBER_EXAMPLE = "12A";
 }

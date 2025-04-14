@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 @Data
 public class PersonResponseDTO {
-    @Schema(description = SwaggerConstants.ID_DESC, example = SwaggerConstants.ID_EXAMPLE)
+    @Schema(description = SwaggerConstants.ID_DESC + " person", example = SwaggerConstants.ID_EXAMPLE)
     private Integer id;
 
     @Schema(description = SwaggerConstants.USERNAME_DESC, example = SwaggerConstants.USERNAME_EXAMPLE)

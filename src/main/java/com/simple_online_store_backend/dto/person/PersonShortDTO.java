@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class PersonShortDTO {
-    @Schema(description = SwaggerConstants.ID_DESC, example = SwaggerConstants.ID_EXAMPLE)
+    @Schema(description = SwaggerConstants.ID_DESC + " person", example = SwaggerConstants.ID_EXAMPLE)
     private Integer id;
 
     @Schema(description = SwaggerConstants.USERNAME_DESC, example = SwaggerConstants.USERNAME_EXAMPLE)
