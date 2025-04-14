@@ -1,6 +1,6 @@
 package com.simple_online_store_backend.controller;
 
-import com.simple_online_store_backend.dto.JwtResponse;
+import com.simple_online_store_backend.dto.person.JwtResponse;
 import com.simple_online_store_backend.dto.person.LoginRequest;
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;

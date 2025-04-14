@@ -37,4 +37,14 @@ public class SwaggerConstants {
     public static final String HOUSE_NUMBER_DESC = "The house number where the pick-up point is located or the address " +
             "(contains only numbers and letters)";
     public static final String HOUSE_NUMBER_EXAMPLE = "12A";
+
+    // Constants for classes related to the Person entity.
+    public static final String HOUSING_TYPE_DESC = "Housing type is required when creating an order (to check whether an apartment number is required).";
+    public static final String HOUSING_TYPE_EXAMPLE = "APARTMENT";
+
+    public static final String APARTMENT_DESC = "The apartment number is required if the selected housing type is APARTMENT.";
+    public static final String APARTMENT_EXAMPLE = "34";
+
+    public static final String POSTAL_CODE_DESC = "Postal code is required for postal delivery";
+    public static final String POSTAL_CODE_EXAMPLE = "1234";
 }
