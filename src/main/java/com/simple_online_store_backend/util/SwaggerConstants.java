@@ -20,4 +20,7 @@ public class SwaggerConstants {
     public static final String AGREEMENT_ACCEPTED_DESC = "Necessary to verify that the user has agreed consent";
 
     public static final String SPECIAL_CODE_DESC = "Required to register a user as an admin";
+
+    public static final String ID_DESC = "Unique identifier of the person";
+    public static final String ID_EXAMPLE = "42";
 }
