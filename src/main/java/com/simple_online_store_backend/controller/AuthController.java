@@ -10,6 +10,9 @@ import com.simple_online_store_backend.service.PeopleService;
 import com.simple_online_store_backend.service.PersonDetailsService;
 import com.simple_online_store_backend.service.RefreshTokenService;
 import com.simple_online_store_backend.util.PersonValidator;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.util.Map;
 
+@Tag(name = "Authentication", description = "Endpoints for user authentication and authorization")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -41,6 +45,10 @@ public class AuthController {
     private final PersonDetailsService personDetailsService;
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
+    @Operation(summary = "Login a user", description = "Returns access token and sets refresh token cookie")
+    @ApiResponse(responseCode = "200", description = "Successfully authenticated")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    @ApiResponse(responseCode = "500", description = "Error inside method")
     @PostMapping("/login")
     public ResponseEntity<?> authenticate(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
@@ -87,6 +95,9 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Register new user", description = "Creates a new user account")
+    @ApiResponse(responseCode = "200", description = "Successfully registered")
+    @ApiResponse(responseCode = "500", description = "Error inside method")
     @PostMapping("/registration")
     public ResponseEntity<HttpStatus> performRegistration(@RequestBody @Valid PersonRequestDTO dto,
                                                           BindingResult bindingResult) {
@@ -102,6 +113,10 @@ public class AuthController {
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
+    @Operation(summary = "Refresh access token", description = "Generates a new access token using a valid refresh token.")
+    @ApiResponse(responseCode = "200", description = "New access token successfully issued")
+    @ApiResponse(responseCode = "401", description = "User is not authorized")
+    @ApiResponse(responseCode = "500", description = "Error inside method")
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
         try {
@@ -126,6 +141,11 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Logout the user", description = "Invalidates the refresh token and deletes the cookie.")
+    @ApiResponse(responseCode = "200", description = "Delete refresh token cookie")
+    @ApiResponse(responseCode = "401", description = "User is not authorized")
+    @ApiResponse(responseCode = "500", description = "Error inside method")
+    @ApiResponse(responseCode = "423", description = "Account is locked (deactivated)")
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@CookieValue("refreshToken") String refreshToken) {
         String username = jwtUtil.validateRefreshToken(refreshToken).getClaim("username").asString();
