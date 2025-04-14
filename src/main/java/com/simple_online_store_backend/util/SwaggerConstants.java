@@ -38,7 +38,7 @@ public class SwaggerConstants {
             "(contains only numbers and letters)";
     public static final String HOUSE_NUMBER_EXAMPLE = "12A";
 
-    // Constants for classes related to the Person entity.
+    // Constants for classes related to the Address entity.
     public static final String HOUSING_TYPE_DESC = "Housing type is required when creating an order (to check whether an apartment number is required).";
     public static final String HOUSING_TYPE_EXAMPLE = "APARTMENT";
 
@@ -47,4 +47,6 @@ public class SwaggerConstants {
 
     public static final String POSTAL_CODE_DESC = "Postal code is required for postal delivery";
     public static final String POSTAL_CODE_EXAMPLE = "1234";
+
+
 }
