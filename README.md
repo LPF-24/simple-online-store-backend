@@ -38,10 +38,10 @@ docker-compose up --build
 
 ## 👥 Sample Accounts
 
-| Role  | Username | Password   |
-|-------|----------|------------|
-| Admin | `test2`  | `Test234!` |
-| User  | `jack`   | `Test234!` |
+| Role  | Username    | Password   |
+|-------|-------------|------------|
+| Admin | `test2`     | `Test234!` |
+| User  | `jorge_doe` | `Zegh576!` |
 
 ## 🔐 JWT Authentication
 
