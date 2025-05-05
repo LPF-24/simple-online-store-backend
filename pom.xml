@@ -128,6 +128,12 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${openapi.version}</version>
 		</dependency>
+
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-base</artifactId>
+			<version>25-ea+12</version>
+		</dependency>
 	</dependencies>
 
 	<build>

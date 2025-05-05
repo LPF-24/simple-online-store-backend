@@ -31,6 +31,6 @@ public class ProductRequestDTO {
     @NotNull(message = "Product category name can't be empty")
     private ProductCategory productCategory;
 
-    @NotNull(message = "Product category name can't be empty")
+    @NotNull(message = "Availability can't be empty")
     private Boolean availability;
 }

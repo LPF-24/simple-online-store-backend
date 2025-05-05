@@ -29,7 +29,6 @@ public class AddressController {
     @Operation(summary = "Add an address", description = "Adds an address for the user")
     @ApiResponse(responseCode = "200", description = "Successfully added")
     @ApiResponse(responseCode = "500", description = "Error inside method")
-    @ApiResponse(responseCode = "422", description = "Request is syntactically correct but semantically invalid")
     @ApiResponse(responseCode = "403", description = "User is authenticated but not allowed to access this resource")
     @ApiResponse(responseCode = "400", description = "Request is invalid or missing required parameters")
     @ApiResponse(responseCode = "422", description = "Validation failed on request data")
