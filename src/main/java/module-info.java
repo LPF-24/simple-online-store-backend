@@ -11,7 +11,7 @@ module simple.onlinestore.backend {
     requires jakarta.validation;
 
     requires java.sql;
-    requires java.desktop; // ← это решит твою проблему с java.beans
+    requires java.desktop; // ← это решит проблему с java.beans
 
     requires com.fasterxml.jackson.databind;
     requires static lombok;
