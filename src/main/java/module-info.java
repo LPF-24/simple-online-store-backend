@@ -26,4 +26,5 @@ module simple.onlinestore.backend {
     requires spring.security.crypto;
     requires spring.security.web;
     requires modelmapper;
+    requires passay;
 }

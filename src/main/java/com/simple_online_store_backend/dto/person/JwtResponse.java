@@ -8,7 +8,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class JwtResponse {
-    //TODO
     @Schema(description = "JWT access token", example = "")
     private String token;
 
