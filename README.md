@@ -89,10 +89,13 @@ Interactive API available at:
 http://localhost:8080/swagger-ui.html
 ```
 
-## 📌 Project Status
+## 🚧 Project Status: In Development
 
-✅ Core functionality is complete.  
-🛠 JavaDoc and integration testing to be added in future iterations.
+This project is currently under active development. Some features may be incomplete, temporarily disabled, or not fully functional yet.
+
+The repository is intended to demonstrate the architecture and implementation approach. Functionality such as authentication, database integration, and user management is still being finalized.
+
+If you encounter issues during startup or usage, this is expected at this stage of development.
 
 ## 👤 Author
 
