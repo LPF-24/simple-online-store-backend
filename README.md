@@ -6,6 +6,11 @@ The application follows a clean layered architecture with clear separation of co
 
 RESTful APIs are documented using OpenAPI and can be explored interactively via Swagger UI.
 
+## ⚠️ Important Note / Project status
+This project previously used Lombok and JPMS modules, which caused build-time issues.
+A refactoring is planned to make the project fully runnable without modular conflicts.
+The purpose of this repository is to demonstrate architectural decisions and domain modeling.
+
 ## 🚀 Technologies Used
 
 - Java 17
@@ -89,13 +94,10 @@ Interactive API available at:
 http://localhost:8080/swagger-ui.html
 ```
 
-## 🚧 Project Status: In Development
-
-This project is currently under active development. Some features may be incomplete, temporarily disabled, or not fully functional yet.
-
-The repository is intended to demonstrate the architecture and implementation approach. Functionality such as authentication, database integration, and user management is still being finalized.
-
-If you encounter issues during startup or usage, this is expected at this stage of development.
+## ⚠️ Important Note / Project status
+This project previously used Lombok and JPMS modules, which caused build-time issues.
+A refactoring is planned to make the project fully runnable without modular conflicts.
+The purpose of this repository is to demonstrate architectural decisions and domain modeling.
 
 ## 👤 Author
 
