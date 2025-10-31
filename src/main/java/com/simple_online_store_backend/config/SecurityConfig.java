@@ -3,6 +3,7 @@ package com.simple_online_store_backend.config;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PersonDetailsService;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -62,9 +64,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   DaoAuthenticationProvider daoAuthenticationProvider) throws Exception {
+                                                   DaoAuthenticationProvider daoAuthenticationProvider,
+                                                   @Qualifier("corsConfigurationSource") CorsConfigurationSource cors) throws Exception {
         return http
-                .cors(Customizer.withDefaults()) // enable cross-site request settings manually
+                .cors(c -> c.configurationSource(cors)) // enable cross-site request settings manually
                 .csrf(AbstractHttpConfigurer::disable) // disable CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth

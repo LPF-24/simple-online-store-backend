@@ -95,7 +95,6 @@ http://localhost:8080/swagger-ui.html
 ```
 
 ## ⚠️ Important Note / Project status
-This project previously used Lombok and JPMS modules, which caused build-time issues.
 A refactoring is planned to make the project fully runnable without modular conflicts.
 The purpose of this repository is to demonstrate architectural decisions and domain modeling.
 
