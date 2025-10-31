@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,11 +19,15 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Address", description = "Endpoints for work with address")
 @RequestMapping("/address")
-@RequiredArgsConstructor
 @RestController
 public class AddressController {
     private final AddressService addressService;
     private final PeopleService peopleService;
+
+    public AddressController(AddressService addressService, PeopleService peopleService) {
+        this.addressService = addressService;
+        this.peopleService = peopleService;
+    }
 
     @Operation(summary = "Add an address", description = "Adds an address for the user")
     @ApiResponse(responseCode = "200", description = "Successfully added")

@@ -7,16 +7,20 @@ import com.simple_online_store_backend.entity.Address;
 import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.entity.PickupLocation;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class OrderMapper {
     private final ModelMapper modelMapper;
     private final AddressMapper addressMapper;
     private final PickupLocationMapper pickupLocationMapper;
+
+    public OrderMapper(ModelMapper modelMapper, AddressMapper addressMapper, PickupLocationMapper pickupLocationMapper) {
+        this.modelMapper = modelMapper;
+        this.addressMapper = addressMapper;
+        this.pickupLocationMapper = pickupLocationMapper;
+    }
 
     public Order mapRequestToOrder(OrderRequestDTO dto) {
         return modelMapper.map(dto, Order.class);

@@ -3,16 +3,19 @@ package com.simple_online_store_backend.mapper;
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.entity.Person;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class PersonConverter {
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
+
+    public PersonConverter(ModelMapper modelMapper, PasswordEncoder passwordEncoder) {
+        this.modelMapper = modelMapper;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public Person convertToPerson(PersonRequestDTO dto) {
         return modelMapper.map(dto, Person.class);

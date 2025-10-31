@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -22,10 +21,13 @@ import java.util.List;
 @Tag(name = "People", description = "Account management and user profile operations")
 @RestController
 @RequestMapping("/people")
-@RequiredArgsConstructor
 public class PeopleController {
     private final PeopleService peopleService;
     private static final Logger logger = LoggerFactory.getLogger(PeopleController.class);
+
+    public PeopleController(PeopleService peopleService) {
+        this.peopleService = peopleService;
+    }
 
     @Operation(
             summary = "Get all customers",

@@ -6,15 +6,9 @@ import com.simple_online_store_backend.validation.annotation.ValidPassword;
 import com.simple_online_store_backend.validation.annotation.ValidPhoneNumber;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDate;
 
-@NoArgsConstructor
-@Getter
-@Setter
 @Schema(description = "Data required for user registration")
 public class PersonRequestDTO {
 
@@ -50,4 +44,63 @@ public class PersonRequestDTO {
 
     @Schema(description = SwaggerConstants.SPECIAL_CODE_DESC)
     private String specialCode;
+
+    public PersonRequestDTO() {
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Boolean getAgreementAccepted() {
+        return agreementAccepted;
+    }
+
+    public void setAgreementAccepted(Boolean agreementAccepted) {
+        this.agreementAccepted = agreementAccepted;
+    }
+
+    public String getSpecialCode() {
+        return specialCode;
+    }
+
+    public void setSpecialCode(String specialCode) {
+        this.specialCode = specialCode;
+    }
 }

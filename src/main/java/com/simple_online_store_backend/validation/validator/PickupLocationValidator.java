@@ -5,13 +5,15 @@ import com.simple_online_store_backend.repository.PickupLocationRepository;
 import com.simple_online_store_backend.validation.annotation.ValidPickupLocation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
 
-@RequiredArgsConstructor
 public class PickupLocationValidator implements ConstraintValidator<ValidPickupLocation, PickupLocation> {
     private final PickupLocationRepository pickupLocationRepository;
+
+    public PickupLocationValidator(PickupLocationRepository pickupLocationRepository) {
+        this.pickupLocationRepository = pickupLocationRepository;
+    }
 
     @Override
     public boolean isValid(PickupLocation location, ConstraintValidatorContext context) {

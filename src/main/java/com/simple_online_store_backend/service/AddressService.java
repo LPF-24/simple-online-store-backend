@@ -8,7 +8,6 @@ import com.simple_online_store_backend.mapper.AddressMapper;
 import com.simple_online_store_backend.repository.AddressRepository;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,11 +20,16 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class AddressService {
     private final AddressRepository addressRepository;
     private final PeopleRepository peopleRepository;
     private final AddressMapper addressMapper;
+
+    public AddressService(AddressRepository addressRepository, PeopleRepository peopleRepository, AddressMapper addressMapper) {
+        this.addressRepository = addressRepository;
+        this.peopleRepository = peopleRepository;
+        this.addressMapper = addressMapper;
+    }
 
     @Transactional
     public AddressResponseDTO addAddress(AddressRequestDTO dto, int personId) {

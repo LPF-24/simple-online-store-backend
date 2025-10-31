@@ -6,7 +6,6 @@ import com.simple_online_store_backend.entity.Product;
 import com.simple_online_store_backend.mapper.ProductMapper;
 import com.simple_online_store_backend.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -20,10 +19,14 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
-@RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+
+    public ProductService(ProductRepository productRepository, ProductMapper productMapper) {
+        this.productRepository = productRepository;
+        this.productMapper = productMapper;
+    }
 
     public List<ProductResponseDTO> getAllProducts() {
         return productRepository.findAll().stream().map(productMapper::mapProductToResponseDTO).toList();

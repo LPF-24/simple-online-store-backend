@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,9 +24,12 @@ import java.util.List;
 @Tag(name = "Pickup Locations", description = "Manage pick-up locations")
 @RestController
 @RequestMapping("/pickup")
-@RequiredArgsConstructor
 public class PickupLocationController {
     private final PickupLocationService service;
+
+    public PickupLocationController(PickupLocationService service) {
+        this.service = service;
+    }
 
     @Operation(summary = "Get all pick-up locations", description = "Returns list of pick-up points for users/admins")
     @ApiResponse(responseCode = "200", description = "List successfully returned")

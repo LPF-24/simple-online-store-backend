@@ -6,7 +6,6 @@ import com.simple_online_store_backend.entity.PickupLocation;
 import com.simple_online_store_backend.mapper.PickupLocationMapper;
 import com.simple_online_store_backend.repository.PickupLocationRepository;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -20,10 +19,14 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
-@RequiredArgsConstructor
 public class PickupLocationService {
     private final PickupLocationRepository pickupLocationRepository;
     private final PickupLocationMapper mapper;
+
+    public PickupLocationService(PickupLocationRepository pickupLocationRepository, PickupLocationMapper mapper) {
+        this.pickupLocationRepository = pickupLocationRepository;
+        this.mapper = mapper;
+    }
 
     public List<PickupLocationResponseDTO> getAllPickupLocations(String role) {
         List<PickupLocation> locations;

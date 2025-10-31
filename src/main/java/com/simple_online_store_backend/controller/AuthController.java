@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -35,7 +34,6 @@ import java.util.Map;
 @Tag(name = "Authentication", description = "Endpoints for user authentication and authorization")
 @RestController
 @RequestMapping("/auth")
-@RequiredArgsConstructor
 public class AuthController {
     private final JWTUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
@@ -44,6 +42,15 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final PersonDetailsService personDetailsService;
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
+    public AuthController(JWTUtil jwtUtil, AuthenticationManager authenticationManager, PeopleService peopleService, PersonValidator personValidator, RefreshTokenService refreshTokenService, PersonDetailsService personDetailsService) {
+        this.jwtUtil = jwtUtil;
+        this.authenticationManager = authenticationManager;
+        this.peopleService = peopleService;
+        this.personValidator = personValidator;
+        this.refreshTokenService = refreshTokenService;
+        this.personDetailsService = personDetailsService;
+    }
 
     @Operation(summary = "Login a user", description = "Returns access token and sets refresh token cookie")
     @ApiResponse(responseCode = "200", description = "Successfully authenticated")

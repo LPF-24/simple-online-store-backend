@@ -11,7 +11,6 @@ import com.simple_online_store_backend.repository.OrderRepository;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import com.simple_online_store_backend.security.PersonDetails;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class PeopleService {
     private final PeopleRepository peopleRepository;
     private final PersonConverter personConverter;
@@ -33,6 +31,13 @@ public class PeopleService {
     private final OrderRepository orderRepository;
     @Value("${admin.registration.code}")
     private String adminCodeFromYml;
+
+    public PeopleService(PeopleRepository peopleRepository, PersonConverter personConverter, PasswordEncoder passwordEncoder, OrderRepository orderRepository) {
+        this.peopleRepository = peopleRepository;
+        this.personConverter = personConverter;
+        this.passwordEncoder = passwordEncoder;
+        this.orderRepository = orderRepository;
+    }
 
     @Transactional
     public void register(PersonRequestDTO requestDTO) {
@@ -64,7 +69,7 @@ public class PeopleService {
         }
 
         // 2. Update the user status
-        person.setIsDeleted(true);
+        person.setDeleted(true);
 
         // 3. Save everything (thanks to @Transactional, changes are cascaded)
         peopleRepository.save(person);
@@ -75,7 +80,7 @@ public class PeopleService {
         Person person = peopleRepository.findByUserName(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-        if (!person.getIsDeleted()) {
+        if (!person.getDeleted()) {
             throw new IllegalStateException("Account is already active");
         }
 
@@ -83,7 +88,7 @@ public class PeopleService {
             throw new BadCredentialsException("Incorrect password");
         }
 
-        person.setIsDeleted(false);
+        person.setDeleted(false);
         peopleRepository.save(person);
     }
 

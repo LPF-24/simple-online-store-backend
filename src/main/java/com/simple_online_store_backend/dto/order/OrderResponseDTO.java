@@ -7,15 +7,9 @@ import com.simple_online_store_backend.dto.product.ProductShortDTO;
 import com.simple_online_store_backend.enums.OrderStatus;
 import com.simple_online_store_backend.util.SwaggerConstants;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.List;
 
-@NoArgsConstructor
-@Getter
-@Setter
 public class OrderResponseDTO {
     @Schema(description = SwaggerConstants.ID_DESC + " order", example = SwaggerConstants.ID_EXAMPLE)
     private Integer id;
@@ -34,4 +28,55 @@ public class OrderResponseDTO {
 
     @Schema(description = "Address for order delivery")
     private AddressResponseDTO address;
+
+    public OrderResponseDTO() {
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public OrderStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(OrderStatus status) {
+        this.status = status;
+    }
+
+    public PersonShortDTO getPerson() {
+        return person;
+    }
+
+    public void setPerson(PersonShortDTO person) {
+        this.person = person;
+    }
+
+    public List<ProductShortDTO> getProducts() {
+        return products;
+    }
+
+    public void setProducts(List<ProductShortDTO> products) {
+        this.products = products;
+    }
+
+    public PickupLocationResponseDTO getPickupLocation() {
+        return pickupLocation;
+    }
+
+    public void setPickupLocation(PickupLocationResponseDTO pickupLocation) {
+        this.pickupLocation = pickupLocation;
+    }
+
+    public AddressResponseDTO getAddress() {
+        return address;
+    }
+
+    public void setAddress(AddressResponseDTO address) {
+        this.address = address;
+    }
 }

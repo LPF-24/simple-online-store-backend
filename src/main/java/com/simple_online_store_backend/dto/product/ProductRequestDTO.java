@@ -3,15 +3,9 @@ package com.simple_online_store_backend.dto.product;
 import com.simple_online_store_backend.enums.ProductCategory;
 import com.simple_online_store_backend.validation.annotation.ValidProductCategory;
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@NoArgsConstructor
-@Getter
-@Setter
 public class ProductRequestDTO {
     @NotEmpty(message = "Product name can't be empty")
     @Size(min = 2, max = 255, message = "Product name must be between 2 and 255 characters")
@@ -33,4 +27,47 @@ public class ProductRequestDTO {
 
     @NotNull(message = "Availability can't be empty")
     private Boolean availability;
+
+    public ProductRequestDTO() {
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public void setProductName(String productName) {
+        this.productName = productName;
+    }
+
+    public String getProductDescription() {
+        return productDescription;
+    }
+
+    public void setProductDescription(String productDescription) {
+        this.productDescription = productDescription;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public ProductCategory getProductCategory() {
+        return productCategory;
+    }
+
+    public void setProductCategory(ProductCategory productCategory) {
+        this.productCategory = productCategory;
+    }
+
+    public Boolean getAvailability() {
+        return availability;
+    }
+
+    public void setAvailability(Boolean availability) {
+        this.availability = availability;
+    }
 }

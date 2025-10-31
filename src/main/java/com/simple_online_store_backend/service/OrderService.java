@@ -14,7 +14,6 @@ import com.simple_online_store_backend.repository.PeopleRepository;
 import com.simple_online_store_backend.repository.ProductRepository;
 import com.simple_online_store_backend.security.PersonDetails;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -28,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
@@ -36,6 +34,14 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final AddressRepository addressRepository;
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
+
+    public OrderService(OrderRepository orderRepository, OrderMapper orderMapper, PeopleRepository peopleRepository, ProductRepository productRepository, AddressRepository addressRepository) {
+        this.orderRepository = orderRepository;
+        this.orderMapper = orderMapper;
+        this.peopleRepository = peopleRepository;
+        this.productRepository = productRepository;
+        this.addressRepository = addressRepository;
+    }
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_USER')")
@@ -46,7 +52,7 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Verifies whether the account is active or marked as deleted.
-        if (owner.getIsDeleted()) {
+        if (owner.getDeleted()) {
             throw new ValidationException("Your account is deactivated. Please restore your account before placing an order.");
         }
 

@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +19,12 @@ import java.util.List;
 @Tag(name = "Products", description = "Managing products")
 @RestController
 @RequestMapping("/product")
-@RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
+
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
 
     @Operation(summary = "Get all products", description = "Returns a list of all products (including unavailable)")
     @ApiResponse(responseCode = "200", description = "List of products successfully retrieved")

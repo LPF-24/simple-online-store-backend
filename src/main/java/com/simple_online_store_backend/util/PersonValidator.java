@@ -2,7 +2,6 @@ package com.simple_online_store_backend.util;
 
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.repository.PeopleRepository;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -10,10 +9,13 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
 @Component
-@RequiredArgsConstructor
 public class PersonValidator implements Validator {
     private final PeopleRepository peopleRepository;
     private static final Logger logger = LoggerFactory.getLogger(PersonValidator.class);
+
+    public PersonValidator(PeopleRepository peopleRepository) {
+        this.peopleRepository = peopleRepository;
+    }
 
     @Override
     public boolean supports(Class<?> clazz) {
