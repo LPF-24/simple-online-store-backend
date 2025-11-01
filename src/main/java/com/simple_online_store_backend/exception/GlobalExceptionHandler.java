@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.exception;
 
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,6 +8,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -28,6 +31,13 @@ public class GlobalExceptionHandler {
         // часто в сообщении лишний stacktrace — можно обрезать по первой строке
         msg = msg.split("\n")[0];
         return error(HttpStatus.BAD_REQUEST, "MESSAGE_NOT_READABLE", msg, req.getRequestURI());
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MissingRequestCookieException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMissingCookie(
+            MissingRequestCookieException ex, HttpServletRequest req) {
+        String msg = "Required cookie '" + ex.getCookieName() + "' is missing";
+        return error(HttpStatus.BAD_REQUEST, "MISSING_COOKIE", msg, req.getRequestURI());
     }
 
     // 401 — неверные креды при логине
@@ -54,6 +64,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAny(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error", req.getRequestURI());
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidRefreshToken(InvalidRefreshTokenException ex, HttpServletRequest req) {
+        return error(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", ex.getMessage(), req.getRequestURI());
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest req) {
+        return error(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "The username was not found.", req.getRequestURI());
     }
 
     private ResponseEntity<ErrorResponseDTO> error(HttpStatus status, String code, String message, String path) {

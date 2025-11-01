@@ -6,6 +6,7 @@ import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
+import com.simple_online_store_backend.exception.InvalidRefreshTokenException;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
@@ -13,6 +14,8 @@ import com.simple_online_store_backend.service.PersonDetailsService;
 import com.simple_online_store_backend.service.RefreshTokenService;
 import com.simple_online_store_backend.util.PersonValidator;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -267,32 +270,81 @@ public class AuthController {
         return ResponseEntity.created(location).body(saved);
     }
 
-    @Operation(summary = "Refresh access token", description = "Generates a new access token using a valid refresh token.")
-    @ApiResponse(responseCode = "200", description = "New access token successfully issued")
-    @ApiResponse(responseCode = "401", description = "User is not authorized")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
+    @Operation(
+            summary = "Refresh user access token",
+            description = "This endpoint allows the user to refresh their access token using the refresh token stored in the cookie.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Refresh token stored in cookies",
+                    required = true
+            ),
+            parameters = {
+                    @Parameter(
+                            name = "refreshToken",
+                            in = ParameterIn.COOKIE,
+                            description = "refresh token stored in the browser cookie",
+                            required = true,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "New access token successfully issued",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    examples = @ExampleObject(
+                                            name = "Issued",
+                                            summary = "New access token successfully issued",
+                                            value = "{ \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJVc2VyIGRldGFpbHMiLCJ1c2VybmFtZSI6Im1hcmlhMTIiLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWF0IjoxNzYyMDI2MTc3LCJpc3MiOiJBRE1JTiIsImV4cCI6MTc2MjAyOTc3N30.xS5bMtYQhyAv83fyGblJYZYu1EtzzuEjPd38soxhmi4\"}"
+                                    ))),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Unauthorized",
+                                            summary = "Unauthorized - refresh token expired",
+                                            value = "{\n" +
+                                                    "    \"status\": 401,\n" +
+                                                    "    \"message\": \"The refresh token has expired.\",\n" +
+                                                    "    \"path\": \"/auth/refresh\",\n" +
+                                                    "    \"code\": \"TOKEN_EXPIRED\"\n" +
+                                                    "}"
+                                    ))),
+                    @ApiResponse(responseCode = "400", description = "Bad Request",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Bad Request",
+                                            summary = "Bad Request - missing or invalid refresh token",
+                                            value = "{\n" +
+                                                    "    \"status\": 400,\n" +
+                                                    "    \"message\": \"Refresh token is missing or invalid\",\n" +
+                                                    "    \"path\": \"/auth/refresh\",\n" +
+                                                    "    \"code\": \"INVALID_REFRESH_TOKEN\"\n" +
+                                                    "}"
+                                    )))
+            })
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
-        try {
-            String username = jwtUtil.validateRefreshToken(refreshToken).getClaim("username").asString();
-            String role = personDetailsService.loadUserByUsername(username).getAuthorities().stream()
-                    .findFirst()
-                    .map(GrantedAuthority::getAuthority)
-                    .orElse("ROLE_USER");
+        String username = jwtUtil.validateRefreshToken(refreshToken).getClaim("username").asString();
+        String role = personDetailsService.loadUserByUsername(username).getAuthorities().stream()
+                .findFirst()
+                .map(GrantedAuthority::getAuthority)
+                .orElse("ROLE_USER");
 
-            String savedToken = refreshTokenService.getRefreshToken(username);
+        String savedToken = refreshTokenService.getRefreshToken(username);
 
-            if (!refreshToken.equals(savedToken)) {
-                throw new RuntimeException("RefreshToken is invalid or expired");
-            }
-
-            String newAccessToken = jwtUtil.generateToken(username, role);
-
-            return ResponseEntity.ok(Map.of("access_token", newAccessToken));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid refresh token"));
+        if (!refreshToken.equals(savedToken)) {
+            throw new InvalidRefreshTokenException("Invalid refresh token");
         }
+
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            throw new InvalidRefreshTokenException("Refresh token is missing");
+        }
+
+        String newAccessToken = jwtUtil.generateToken(username, role);
+
+        return ResponseEntity.ok(Map.of("access_token", newAccessToken));
     }
 
     @Operation(summary = "Logout the user", description = "Invalidates the refresh token and deletes the cookie.")

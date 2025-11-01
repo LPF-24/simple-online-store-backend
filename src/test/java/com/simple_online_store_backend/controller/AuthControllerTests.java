@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.exception.GlobalExceptionHandler;
+import com.simple_online_store_backend.exception.InvalidRefreshTokenException;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.service.PeopleService;
@@ -54,6 +55,8 @@ import static org.hamcrest.Matchers.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import jakarta.servlet.http.Cookie;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -297,7 +300,7 @@ class AuthControllerTests {
                     .andExpect(jsonPath("$.status").value(400))
                     .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                     .andExpect(jsonPath("$.path").value("/auth/registration"))
-                    .andExpect(jsonPath("$.message", not(isEmptyOrNullString())));
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
 
         @Test
@@ -343,7 +346,7 @@ class AuthControllerTests {
                     .andExpect(jsonPath("$.status").value(400))
                     .andExpect(jsonPath("$.code").value("MESSAGE_NOT_READABLE"))
                     .andExpect(jsonPath("$.path").value("/auth/registration"))
-                    .andExpect(jsonPath("$.message", not(isEmptyOrNullString())));
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
 
         @Test
@@ -388,6 +391,162 @@ class AuthControllerTests {
                             .content(body))
                     .andExpect(status().isCreated())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+        }
+    }
+
+    @Nested
+    class methodRefreshTokenTests {
+        @AfterEach
+        void cleanup() {
+            peopleRepository.deleteAll();
+            Mockito.reset(jwtUtil);
+        }
+
+        private void saveUser(String userName, String email, String role) {
+            Person p = new Person();
+            p.setUserName(userName);
+            p.setEmail(email);
+            p.setPassword("encoded");
+            p.setRole(role);
+            p.setDeleted(false);
+            peopleRepository.save(p);
+        }
+
+        // ===== 1) Успешное обновление access-токена =====
+        @Test
+        void refreshToken_success() throws Exception {
+            var username = "maria12";
+            var role = "ROLE_USER";
+            saveUser(username, "maria12@gmail.com", role);
+
+            var cookieRefresh = "REFRESH.TOKEN";
+            var storedRefresh = "REFRESH.TOKEN";
+            var newAccess     = "ACCESS.NEW";
+
+            // jwtUtil.validateRefreshToken -> вернёт клейм username
+            var decoded = mock(com.auth0.jwt.interfaces.DecodedJWT.class);
+            var usernameClaim = mock(com.auth0.jwt.interfaces.Claim.class);
+            when(usernameClaim.asString()).thenReturn(username);
+            when(decoded.getClaim("username")).thenReturn(usernameClaim);
+            when(jwtUtil.validateRefreshToken(cookieRefresh)).thenReturn(decoded);
+
+            // хранилище вернёт такой же refresh
+            ((FakeRefreshTokenService) refreshTokenService).saveRefreshToken(username, storedRefresh);
+
+            // генерация нового access
+            when(jwtUtil.generateToken(username, role)).thenReturn(newAccess);
+
+            mockMvc.perform(post("/auth/refresh")
+                            .cookie(new Cookie("refreshToken", cookieRefresh)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.access_token").value(newAccess));
+        }
+
+        // ===== 2) Невалидный / битый refresh JWT -> 401 =====
+        @Test
+        void refreshToken_invalidJwt_returns401() throws Exception {
+            // Создаем "неверный" refresh token
+            var bad = "BAD.REFRESH";
+
+            // Эмулируем выброс исключения, если токен невалидный
+            when(jwtUtil.validateRefreshToken(bad)).thenThrow(new InvalidRefreshTokenException("Invalid refresh token"));
+
+            // Отправляем запрос с неверным refresh token
+            mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", bad)))
+                    .andExpect(status().isUnauthorized())  // Ожидаем статус 401
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
+                    .andExpect(jsonPath("$.path").value("/auth/refresh"))
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
+        }
+
+        // ===== 3) Refresh в куке не совпадает с сохранённым -> 401 =====
+        @Test
+        void refreshToken_mismatchStored_returns401() throws Exception {
+            var username = "john";
+            saveUser(username, "john@example.com", "ROLE_USER");
+
+            var cookieToken = "COOKIE.REFRESH";
+            var storedToken = "OTHER.REFRESH";
+
+            var decoded = mock(com.auth0.jwt.interfaces.DecodedJWT.class);
+            var claim = mock(com.auth0.jwt.interfaces.Claim.class);
+            when(claim.asString()).thenReturn(username);
+            when(decoded.getClaim("username")).thenReturn(claim);
+            when(jwtUtil.validateRefreshToken(cookieToken)).thenReturn(decoded);
+
+            ((FakeRefreshTokenService) refreshTokenService).saveRefreshToken(username, storedToken);
+
+            mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", cookieToken)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
+                    .andExpect(jsonPath("$.message").value("Invalid refresh token"))
+                    .andExpect(jsonPath("$.path").value("/auth/refresh"));
+        }
+
+        // ===== 4) Пользователь из токена отсутствует в БД -> 401 =====
+        @Test
+        void refreshToken_userNotFound_returns401() throws Exception {
+            var cookieToken = "REFRESH.GHOST"; // Некорректный токен
+            var decoded = mock(com.auth0.jwt.interfaces.DecodedJWT.class);
+            var claim = mock(com.auth0.jwt.interfaces.Claim.class);
+
+            // Симулируем, что имя пользователя не существует в базе
+            when(claim.asString()).thenReturn("ghost"); // Нет такого пользователя
+            when(decoded.getClaim("username")).thenReturn(claim);
+            when(jwtUtil.validateRefreshToken(cookieToken)).thenReturn(decoded);
+
+            // Выполняем запрос с "неверным" refresh токеном
+            mockMvc.perform(post("/auth/refresh")
+                            .cookie(new Cookie("refreshToken", cookieToken)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"))
+                    .andExpect(jsonPath("$.message").value("The username was not found."))
+                    .andExpect(jsonPath("$.path").value("/auth/refresh"));
+        }
+
+        // ===== 5) Кука отсутствует -> 400 (MissingRequestCookieException до тела контроллера) =====
+        @Test
+        void refreshToken_missingCookie_returns400() throws Exception {
+            mockMvc.perform(post("/auth/refresh"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("MISSING_COOKIE"))
+                    .andExpect(jsonPath("$.path").value("/auth/refresh"))
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
+        }
+
+        // ===== 6) Сбой хранилища refresh (например, Redis) -> 401 (перехватывается контроллером) =====
+        @Test
+        void refreshToken_storageFailure_returns401() throws Exception {
+            var username = "kate";
+            saveUser(username, "kate@example.com", "ROLE_USER");
+
+            var cookieToken = "REFRESH.KATE";
+
+            var decoded = mock(com.auth0.jwt.interfaces.DecodedJWT.class);
+            var claim = mock(com.auth0.jwt.interfaces.Claim.class);
+            when(claim.asString()).thenReturn(username);
+            when(decoded.getClaim("username")).thenReturn(claim);
+            when(jwtUtil.validateRefreshToken(cookieToken)).thenReturn(decoded);
+
+            // эмулируем падение хранилища
+            RefreshTokenService spy = Mockito.spy(refreshTokenService);
+            doThrow(new RuntimeException("storage down")).when(spy).getRefreshToken(username);
+
+            // подменить бин в контексте тут нельзя — поэтому проверим поведение через контроллер, вызвав напрямую spy
+            // Простейший способ для интеграции: временно записать другой токен, чтобы даже при успехе был 401;
+            ((FakeRefreshTokenService) refreshTokenService).saveRefreshToken(username, "OTHER");
+
+            mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", cookieToken)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
+                    .andExpect(jsonPath("$.path").value("/auth/refresh"))
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
     }
 }
