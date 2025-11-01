@@ -1,7 +1,7 @@
 package com.simple_online_store_backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.simple_online_store_backend.dto.person.LoginRequest;
+import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.exception.GlobalExceptionHandler;
 import com.simple_online_store_backend.repository.PeopleRepository;
@@ -121,8 +121,8 @@ class AuthControllerTests {
         }
     }
 
-    private static LoginRequest req(String u, String p) {
-        var r = new LoginRequest();
+    private static LoginRequestDTO req(String u, String p) {
+        var r = new LoginRequestDTO();
         r.setUsername(u);
         r.setPassword(p);
         return r;
@@ -264,7 +264,7 @@ class AuthControllerTests {
             mockMvc.perform(post("/auth/registration")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
             Optional<Person> saved = peopleRepository.findByUserName("maria12");
@@ -386,7 +386,7 @@ class AuthControllerTests {
             mockMvc.perform(post("/auth/registration")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
         }
     }

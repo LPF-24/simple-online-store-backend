@@ -2,7 +2,6 @@ package com.simple_online_store_backend.controller;
 
 import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.dto.person.JwtResponse;
-import com.simple_online_store_backend.dto.person.LoginRequest;
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
@@ -64,7 +63,42 @@ public class AuthController {
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Login credentials",
                     required = true,
-                    content = @Content(schema = @Schema(implementation = LoginRequestDTO.class))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = LoginRequestDTO.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "Valid authentication",
+                                            summary = "All required fields present",
+                                            value = """
+                                                  {
+                                                    "username": "admin",
+                                                    "password": "ChangeMe_123!"
+                                                  }
+                                                  """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Unauthorized - invalid credentials",
+                                            summary = "Unauthorized - incorrect login or password",
+                                            value = """
+                                                  {
+                                                    "username": "adm",
+                                                    "password": "ChangeM"
+                                                  }
+                                                  """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Locked - the user has been blocked",
+                                            summary = "User has been blocked (soft delete, deletion of a page at the user's request with the possibility of restoration)",
+                                            value = """
+                                                  {
+                                                    "username": "blocked",
+                                                    "password": "Test234!"
+                                                  }
+                                                  """
+                                    )
+                            }
+                    )
             ),
             responses = {
                     @ApiResponse(responseCode = "200", description = "User data: authentication token, id, username",
@@ -104,7 +138,7 @@ public class AuthController {
                                     )))
             })
     @PostMapping("/login")
-    public ResponseEntity<?> authenticate(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+    public ResponseEntity<?> authenticate(@RequestBody LoginRequestDTO loginRequest, HttpServletResponse response) {
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
                         loginRequest.getPassword()));
@@ -146,7 +180,37 @@ public class AuthController {
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Registration details",
                     required = true,
-                    content = @Content(schema = @Schema(implementation = LoginRequestDTO.class))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = PersonRequestDTO.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "Valid registration",
+                                            summary = "All required fields present",
+                                            value = """
+                                                  {
+                                                    "userName": "maria12",
+                                                    "password": "Test234!",
+                                                    "phoneNumber": "+89100605867",
+                                                    "email": "maria12@gmail.com",
+                                                    "agreementAccepted": true,
+                                                    "dateOfBirth": "2000-01-01"
+                                                  }
+                                                  """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Invalid - missing agreement",
+                                            summary = "agreementAccepted is required for registration",
+                                            value = """
+                                                  {
+                                                    "userName": "maria12",
+                                                    "password": "Test234!",
+                                                    "email": "maria12@gmail.com"
+                                                  }
+                                                  """
+                                    )
+                            }
+                    )
             ),
             responses = {
                     @ApiResponse(responseCode = "201", description = "User data: authentication token, id, username",
@@ -155,7 +219,7 @@ public class AuthController {
                                     examples = @ExampleObject(
                                             name = "Created",
                                             summary = "User successfully logged in.",
-                                            value = "{ \"id\": 1, \"userName\": \"maria12\",\n" +
+                                            value = "{ \"id\": 3, \"userName\": \"maria12\",\n" +
                                                     "    \"dateOfBirth\": \"2000-01-01\",\n" +
                                                     "    \"phoneNumber\": \"+89100605867\",\n" +
                                                     "    \"email\": \"maria12@gmail.com\",\n" +
@@ -169,7 +233,7 @@ public class AuthController {
                                             name = "Bad Request",
                                             summary = "Example of 400 Bad Request",
                                             value = "{ \"status\": 400,\n" +
-                                                    "    \"message\": \"userName - Username must be between 2 and 100 characters long;agreementAccepted - You must accept the terms and conditions;email - Email should be valid;password - Password must be 8 or more characters in length., Password must contain 1 or more uppercase characters., Password must contain 1 or more digit characters., Password must contain 1 or more special characters.;\",\n" +
+                                                    "    \"message\": \"agreementAccepted - You must accept the terms and conditions;\",\n" +
                                                     "    \"path\": \"/auth/registration\",\n" +
                                                     "    \"code\": \"VALIDATION_ERROR\"}"
                                     ))),

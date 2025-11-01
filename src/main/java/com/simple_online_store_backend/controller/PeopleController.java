@@ -1,6 +1,6 @@
 package com.simple_online_store_backend.controller;
 
-import com.simple_online_store_backend.dto.person.LoginRequest;
+import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
@@ -71,7 +71,7 @@ public class PeopleController {
             @ApiResponse(responseCode = "400", description = "Invalid credentials or account is already active")
     })
     @RequestMapping(value = "/restore-account", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public ResponseEntity<?> restoreAccount(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> restoreAccount(@RequestBody LoginRequestDTO loginRequest) {
         peopleService.restoreAccount(loginRequest.getUsername(), loginRequest.getPassword());
         return ResponseEntity.ok("Account successfully restored");
     }

@@ -19,22 +19,30 @@ public class StartupSeeder implements CommandLineRunner {
     private final Logger log = LoggerFactory.getLogger(JWTFilter.class);
 
     // --- ADMIN props ---
-    @Value("${app.admin.enabled:true}") private boolean adminEnabled;
-    @Value("${app.admin.username:admin}") private String adminUsername;
-    @Value("${app.admin.email:admin@example.com}") private String adminEmail;
-    @Value("${app.admin.password:ChangeMe_123!}") private String adminPassword;
-    @Value("${app.admin.role:ROLE_ADMIN}") private String adminRole;
+    @Value("${app.admin.enabled}") private boolean adminEnabled;
+    @Value("${app.admin.username}") private String adminUsername;
+    @Value("${app.admin.email}") private String adminEmail;
+    @Value("${app.admin.password}") private String adminPassword;
+    @Value("${app.admin.role}") private String adminRole;
 
     // --- USER props ---
-    @Value("${app.user.enabled:true}") private boolean userEnabled;
-    @Value("${app.user.username:user}") private String userUsername;
-    @Value("${app.user.email:user@example.com}") private String userEmail;
-    @Value("${app.user.password:user123!}") private String userPassword;
-    @Value("${app.user.role:ROLE_USER}") private String userRole;
+    @Value("${app.user.enabled}") private boolean userEnabled;
+    @Value("${app.user.username}") private String userUsername;
+    @Value("${app.user.email}") private String userEmail;
+    @Value("${app.user.password}") private String userPassword;
+    @Value("${app.user.role}") private String userRole;
+
+    // --- BLOCKED props ---
+    @Value("${app.blocked.enabled}") private boolean blockedEnabled;
+    @Value("${app.blocked.username}") private String blockedUsername;
+    @Value("${app.blocked.email}") private String blockedEmail;
+    @Value("${app.blocked.password}") private String blockedPassword;
+    @Value("${app.blocked.role}") private String blockedRole;
 
     // --- reset flags ---
-    @Value("${app.reset.admin-password:false}") private boolean resetAdminPassword;
-    @Value("${app.reset.user-password:false}") private boolean resetUserPassword;
+    @Value("${app.reset.admin-password}") private boolean resetAdminPassword;
+    @Value("${app.reset.user-password}") private boolean resetUserPassword;
+    @Value("${app.reset.blocked-password}") private boolean resetBlockedPassword;
 
     public StartupSeeder(PeopleRepository persons, PasswordEncoder passwordEncoder) {
         this.persons = persons;
@@ -44,18 +52,20 @@ public class StartupSeeder implements CommandLineRunner {
     @Transactional
     @Override
     public void run(String... args) {
-        if (adminEnabled) ensureAccount(adminEmail, adminUsername, adminRole, adminPassword, resetAdminPassword);
+        if (adminEnabled) ensureAccount(adminEmail, adminUsername, adminRole, adminPassword, resetAdminPassword, false);
         else log.info("Admin seeding disabled.");
 
-        if (userEnabled) ensureAccount(userEmail, userUsername, userRole, userPassword, resetUserPassword);
+        if (userEnabled) ensureAccount(userEmail, userUsername, userRole, userPassword, resetUserPassword, false);
         else log.info("User seeding disabled.");
+
+        if (blockedEnabled) ensureAccount(blockedEmail, blockedUsername, blockedRole, blockedPassword, resetBlockedPassword, true);
+        else log.info("Blocked seeding disabled.");
     }
 
-    private void ensureAccount(String email, String username, String role, String rawPassword, boolean resetPasswordFlag) {
+    private void ensureAccount(String email, String username, String role, String rawPassword, boolean resetPasswordFlag, boolean isLocked) {
         persons.findFirstByEmail(email).ifPresentOrElse(existing -> {
             boolean changed = false;
 
-            // выровнять username/role при необходимости
             if (!username.equals(existing.getUserName())) {
                 existing.setUserName(username);
                 changed = true;
@@ -77,6 +87,7 @@ public class StartupSeeder implements CommandLineRunner {
             p.setEmail(email);
             p.setRole(role);
             p.setPassword(passwordEncoder.encode(rawPassword)); // важно: хэшируем
+            p.setDeleted(isLocked);
 
             persons.save(p);
             log.warn("Default account '{}' with role {} created.", email, role);
