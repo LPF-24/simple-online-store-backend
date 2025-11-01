@@ -40,14 +40,14 @@ public class PeopleService {
     }
 
     @Transactional
-    public void register(PersonRequestDTO requestDTO) {
+    public PersonResponseDTO register(PersonRequestDTO requestDTO) {
         Person person = personConverter.convertToPersonToRequest(requestDTO);
         if (requestDTO.getSpecialCode() != null && requestDTO.getSpecialCode().equals(adminCodeFromYml)) {
             person.setRole("ROLE_ADMIN");
         } else {
             person.setRole("ROLE_USER");
         }
-        peopleRepository.saveAndFlush(person);
+        return personConverter.convertToResponseDTO(peopleRepository.saveAndFlush(person));
     }
 
     public List<PersonResponseDTO> getAllConsumers() {

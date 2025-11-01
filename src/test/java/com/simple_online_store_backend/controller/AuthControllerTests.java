@@ -3,7 +3,12 @@ package com.simple_online_store_backend.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simple_online_store_backend.dto.person.LoginRequest;
 import com.simple_online_store_backend.entity.Person;
+import com.simple_online_store_backend.exception.GlobalExceptionHandler;
+import com.simple_online_store_backend.repository.PeopleRepository;
+import com.simple_online_store_backend.security.JWTUtil;
+import com.simple_online_store_backend.service.PeopleService;
 import com.simple_online_store_backend.service.RefreshTokenService;
+import com.simple_online_store_backend.util.PersonValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
@@ -12,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.HttpHeaders;
@@ -21,9 +27,12 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.validation.Errors;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -37,6 +46,12 @@ import org.junit.jupiter.api.*;
 import org.springframework.http.MediaType;
 import org.springframework.context.annotation.Bean;
 
+import com.simple_online_store_backend.dto.person.PersonRequestDTO;
+
+import java.util.Optional;
+
+import static org.hamcrest.Matchers.*;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -45,6 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(GlobalExceptionHandler.class)
 class AuthControllerTests {
 
     @Autowired MockMvc mvc;
@@ -54,7 +70,20 @@ class AuthControllerTests {
     @MockitoBean(enforceOverride = true)
     AuthenticationManager authenticationManager;
 
-    @MockitoBean com.simple_online_store_backend.security.JWTUtil jwtUtil; // фиксируем значения токенов
+    @Autowired private MockMvc mockMvc;
+
+    // Реальная БД/репозиторий
+    @Autowired private PeopleRepository peopleRepository;
+
+    // Реальные бины + Spy, чтобы можно было точечно подменять поведение
+    @MockitoSpyBean
+    private PeopleService peopleService;
+    @MockitoSpyBean private PersonValidator personValidator;
+
+    // JWTUtil — МОК (вместо реального бина), чтобы контекст совпадал с твоими старыми тестами
+    @MockitoBean // <-- если у тебя нет этой аннотации, замени на @MockBean и поменяй импорт
+    private JWTUtil jwtUtil;
+
 
     @TestConfiguration
     static class TestConfig {
@@ -209,6 +238,156 @@ class AuthControllerTests {
                             .contentType(APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req(username, "pwd"))))
                     .andExpect(status().isInternalServerError());
+        }
+    }
+
+    @Nested
+    class methodPerformRegistrationTest {
+        @AfterEach
+        void cleanDbAndResetSpies() {
+            peopleRepository.deleteAll();
+            Mockito.reset(peopleService, personValidator);
+        }
+
+        @Test
+        void registration_success() throws Exception {
+            String body = """
+                          {
+                            "userName": "maria12",
+                            "password": "Test234!",
+                            "email": "maria12@gmail.com",
+                            "agreementAccepted": true,
+                            "dateOfBirth": "2000-01-01"
+                          }
+                        """;
+
+            mockMvc.perform(post("/auth/registration")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+
+            Optional<Person> saved = peopleRepository.findByUserName("maria12");
+            assertTrue(saved.isPresent(), "User must be persisted into DB after successful registration");
+        }
+
+        @Test
+        void registration_validation_error_from_personValidator() throws Exception {
+            String body = """
+                          {
+                            "userName": "m",
+                            "password": "weak",
+                            "email": "invalid"
+                          }
+                          """;
+
+            // Через SpyBean намеренно кладём ошибки
+            doAnswer(inv -> {
+                Errors errors = inv.getArgument(1, Errors.class);
+                errors.rejectValue("userName", "Size", "username is too short");
+                errors.rejectValue("email", "Email", "email format is invalid");
+                return null;
+            }).when(personValidator).validate(any(), any(Errors.class));
+
+            mockMvc.perform(post("/auth/registration")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.path").value("/auth/registration"))
+                    .andExpect(jsonPath("$.message", not(isEmptyOrNullString())));
+        }
+
+        @Test
+        void registration_duplicate_username() throws Exception {
+            // Предсоздаём пользователя напрямую
+            Person p = new Person();
+            p.setUserName("maria12");
+            p.setPassword("encoded");
+            p.setEmail("maria12@gmail.com");
+            p.setRole("ROLE_USER");
+
+            peopleRepository.save(p);
+
+            String body = """
+                          {
+                            "userName": "maria12",
+                            "password": "Test234!",
+                            "email": "maria12@gmail.com",
+                            "agreementAccepted": true
+                          }
+                          """;
+
+            mockMvc.perform(post("/auth/registration")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.path").value("/auth/registration"))
+                    .andExpect(jsonPath("$.message", containsStringIgnoringCase("userName")));
+        }
+
+        @Test
+        void registration_bad_json() throws Exception {
+            String malformed = """
+                              { "userName": "maria12", "password": "Test234!", "email": "maria12@gmail.com"
+                            """;
+
+            mockMvc.perform(post("/auth/registration")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(malformed))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("MESSAGE_NOT_READABLE"))
+                    .andExpect(jsonPath("$.path").value("/auth/registration"))
+                    .andExpect(jsonPath("$.message", not(isEmptyOrNullString())));
+        }
+
+        @Test
+        void registration_internal_error() throws Exception {
+            String body = """
+                          {
+                            "userName": "john_d",
+                            "password": "Strong123!",
+                            "email": "john@example.com",
+                            "agreementAccepted": true,
+                            "dateOfBirth": "2000-01-01"
+                          }
+                        """;
+
+            doThrow(new RuntimeException("DB is down"))
+                    .when(peopleService).register(any(PersonRequestDTO.class));
+
+            mockMvc.perform(post("/auth/registration")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.status").value(500))
+                    .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                    .andExpect(jsonPath("$.message").value("Internal server error"))
+                    .andExpect(jsonPath("$.path").value("/auth/registration"));
+        }
+
+        @Test
+        void registration_routes_and_serialization() throws Exception {
+            String body = """
+                          {
+                            "userName": "route_check",
+                            "password": "Strong123!",
+                            "email": "route@check.dev",
+                            "agreementAccepted": true,
+                            "dateOfBirth": "2000-01-01"
+                          }
+                        """;
+
+            mockMvc.perform(post("/auth/registration")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
         }
     }
 }

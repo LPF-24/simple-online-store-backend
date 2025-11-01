@@ -4,6 +4,7 @@ import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.dto.person.JwtResponse;
 import com.simple_online_store_backend.dto.person.LoginRequest;
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
+import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.JWTUtil;
@@ -33,6 +34,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 
@@ -139,11 +141,53 @@ public class AuthController {
         return ResponseEntity.ok(new JwtResponse(accessToken, personDetails.getId(), personDetails.getUsername()));
     }
 
-    @Operation(summary = "Register new user", description = "Creates a new user account")
-    @ApiResponse(responseCode = "200", description = "Successfully registered")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
+    @Operation(summary = "Register new user",
+            description = "Creates a new user account",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Registration details",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = LoginRequestDTO.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "User data: authentication token, id, username",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    examples = @ExampleObject(
+                                            name = "Created",
+                                            summary = "User successfully logged in.",
+                                            value = "{ \"id\": 1, \"userName\": \"maria12\",\n" +
+                                                    "    \"dateOfBirth\": \"2000-01-01\",\n" +
+                                                    "    \"phoneNumber\": \"+89100605867\",\n" +
+                                                    "    \"email\": \"maria12@gmail.com\",\n" +
+                                                    "    \"role\": \"ROLE_USER\"}"
+                                    ))),
+                    @ApiResponse(responseCode = "400", description = "Bad Request",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Bad Request",
+                                            summary = "Example of 400 Bad Request",
+                                            value = "{ \"status\": 400,\n" +
+                                                    "    \"message\": \"userName - Username must be between 2 and 100 characters long;agreementAccepted - You must accept the terms and conditions;email - Email should be valid;password - Password must be 8 or more characters in length., Password must contain 1 or more uppercase characters., Password must contain 1 or more digit characters., Password must contain 1 or more special characters.;\",\n" +
+                                                    "    \"path\": \"/auth/registration\",\n" +
+                                                    "    \"code\": \"VALIDATION_ERROR\"}"
+                                    ))),
+                    @ApiResponse(responseCode = "500", description = "Internal server error.",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Internal server error",
+                                            summary = "Example of 500 Internal Server Error",
+                                            value = "{ \"status\": 500,\n" +
+                                                    "    \"message\": \"Internal server error\",\n" +
+                                                    "    \"path\": \"/auth/registration\",\n" +
+                                                    "    \"code\": \"INTERNAL_ERROR\" }"
+                                    )))
+            })
     @PostMapping("/registration")
-    public ResponseEntity<HttpStatus> performRegistration(@RequestBody @Valid PersonRequestDTO dto,
+    public ResponseEntity<?> performRegistration(@RequestBody @Valid PersonRequestDTO dto,
                                                           BindingResult bindingResult) {
         logger.info("Beginning of the method performRegistration");
         personValidator.validate(dto, bindingResult);
@@ -152,9 +196,11 @@ public class AuthController {
             ErrorUtil.returnErrorsToClient(bindingResult);
         logger.info("Middle of the method");
 
-        peopleService.register(dto);
+        PersonResponseDTO saved = peopleService.register(dto);
+
+        URI location = URI.create("/users/" + saved.getId());
         logger.info("End of the method performRegistration");
-        return ResponseEntity.ok(HttpStatus.OK);
+        return ResponseEntity.created(location).body(saved);
     }
 
     @Operation(summary = "Refresh access token", description = "Generates a new access token using a valid refresh token.")
