@@ -1,13 +1,18 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS builder
+FROM maven:3.9-eclipse-temurin-21 AS deps
 WORKDIR /app
 
-COPY . .
+COPY pom.xml .
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests dependency:go-offline
 
-RUN ./mvnw clean package -DskipTests
-
-FROM eclipse-temurin:21-jre-alpine
+FROM deps AS build
 WORKDIR /app
 
-COPY --from=builder /app/target/*.jar app.jar
+COPY src ./src
+RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+FROM eclipse-temurin:21-jre AS runtime
+WORKDIR /app
+
+COPY --from=build /app/target/*-SNAPSHOT.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","app.jar"]

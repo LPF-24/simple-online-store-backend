@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: simple-online-store-backend
+
+  datasource:
+    url: jdbc:postgresql://db:5432/online_store_db  # Подключаемся к БД внутри Docker
+    username: postgres
+    password: postgres
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # ⬅ Проверять схему, но не пересоздавать её. update - создает таблицы, если их нет
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+admin:
+  registration:
+    code: SECRET_2025
+
+logging:
+  level:
+    root: DEBUG
+    org:
+      springframework:
+        security: DEBUG
+        orm.jpa: DEBUG
+        jdbc.core: DEBUG
+
+jwt_secret: SECRET
+
+app:
+  cors:
+    allowed-origin-patterns: "*"
+  security:
+    jwt:
+      expiration: PT1H
+  admin:
+    enabled: true
+    username: admin
+    email: admin@example.com
+    password: ChangeMe_123!
+    role: ROLE_ADMIN
+
+  user:
+    enabled: true
+    username: user
+    email: user@example.com
+    password: user123!
+    role: ROLE_USER
+
+  blocked:
+    enabled: true
+    username: blocked
+    email: blocked@example.com
+    password: Test234!
+    role: ROLE_USER
+
+
+  reset:
+    admin-password: false
+    user-password: false
+    blocked-password: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

@@ -1,5 +1,3 @@
-application.yml
-docker-compose.yml
 backup.sql
 db-init/
 src/main/java/com/simple_online_store_backend/validation/annotation/ValidProductsList.java

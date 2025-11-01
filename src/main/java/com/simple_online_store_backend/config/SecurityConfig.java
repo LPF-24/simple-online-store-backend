@@ -99,6 +99,7 @@ public class SecurityConfig {
 
                             return new AuthorizationDecision(isOwner || isAdmin);
                         })
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
                 /*
