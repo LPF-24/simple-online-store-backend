@@ -7,11 +7,11 @@ public class SwaggerConstants {
 
     // Constants for classes related to the Person entity.
     public static final String USERNAME_DESC = "Username of the person";
-    public static final String USERNAME_EXAMPLE = "john_doe";
+    public static final String USERNAME_EXAMPLE = "admin";
 
     public static final String PASSWORD_DESC = "Password (min 8 characters, max 30 characters, " +
             "the first letter is capitalized, contains one digit, one special character and does not contain spaces)";
-    public static final String PASSWORD_EXAMPLE = "Test234!";
+    public static final String PASSWORD_EXAMPLE = "ChangeMe_123!";
 
     public static final String DATE_OF_BIRTH_DESC = "Date of birth (the minimum number of full years for registration is 14)";
     public static final String DATE_OF_BIRTH_EXAMPLE = "2000-01-01";

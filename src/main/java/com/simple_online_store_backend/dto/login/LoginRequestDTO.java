@@ -1,21 +1,16 @@
-package com.simple_online_store_backend.dto.person;
+package com.simple_online_store_backend.dto.login;
 
 import com.simple_online_store_backend.util.SwaggerConstants;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-public class LoginRequest {
-    @Schema(description = SwaggerConstants.USERNAME_DESC, examples = {"john", "test2"})
+public class LoginRequestDTO {
+    @Schema(description = SwaggerConstants.USERNAME_DESC, example = SwaggerConstants.USERNAME_EXAMPLE)
     private String username;
 
-    @Schema(description = SwaggerConstants.PASSWORD_DESC, examples = {"Test234!", "Test678!"})
+    @Schema(description = SwaggerConstants.PASSWORD_DESC, example = SwaggerConstants.PASSWORD_EXAMPLE)
     private String password;
 
-    public LoginRequest() {
-    }
-
-    public LoginRequest(String username, String password) {
-        this.username = username;
-        this.password = password;
+    public LoginRequestDTO() {
     }
 
     public String getUsername() {

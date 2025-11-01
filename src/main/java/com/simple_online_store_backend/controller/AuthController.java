@@ -1,8 +1,10 @@
 package com.simple_online_store_backend.controller;
 
+import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.dto.person.JwtResponse;
 import com.simple_online_store_backend.dto.person.LoginRequest;
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
+import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
@@ -11,6 +13,9 @@ import com.simple_online_store_backend.service.PersonDetailsService;
 import com.simple_online_store_backend.service.RefreshTokenService;
 import com.simple_online_store_backend.util.PersonValidator;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,54 +57,86 @@ public class AuthController {
         this.personDetailsService = personDetailsService;
     }
 
-    @Operation(summary = "Login a user", description = "Returns access token and sets refresh token cookie")
-    @ApiResponse(responseCode = "200", description = "Successfully authenticated")
-    @ApiResponse(responseCode = "401", description = "Invalid credentials")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
+    @Operation(summary = "Login a user",
+            description = "Returns access token and sets refresh token cookie",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Login credentials",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = LoginRequestDTO.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "User data: authentication token, id, username",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    examples = @ExampleObject(
+                                            name = "OK",
+                                            summary = "User successfully logged in.",
+                                            value = "{ \"accessToken\": \"token...\", \"id\": \"1\", \"username\": \"admin\"}"
+                                    ))),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized.",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Unauthorized",
+                                            summary = "Example of 401 Unauthorized",
+                                            value = "{ \"status\": 401, \"message\": \"Invalid username or password\", \"path\": \"/auth/login\", \"code\": \"BAD_CREDENTIALS\"}"
+                                    ))),
+                    @ApiResponse(responseCode = "423", description = "Account blocking exception",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Locked error",
+                                            summary = "Example of 423 Locked Error",
+                                            value = "{ \"status\": 423, \"message\": \"Your account is deactivated. Would you like to restore it?\", \"path\": \"/auth/login\", \"code\": \"ACCOUNT_LOCKED\"}"
+                                    ))),
+                    @ApiResponse(responseCode = "500", description = "Internal server error.",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponseDTO.class),
+                                    examples = @ExampleObject(
+                                            name = "Internal server error",
+                                            summary = "Example of 500 Internal Server Error",
+                                            value = "{ \"status\": 500, \"error\": \"Internal Server Error\", \"path\": \"/auth/login\" }"
+                                    )))
+            })
     @PostMapping("/login")
     public ResponseEntity<?> authenticate(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
-        try {
-            Authentication authentication = authenticationManager
-                    .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
-                            loginRequest.getPassword()));
+        Authentication authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
+                        loginRequest.getPassword()));
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
-            String role = personDetails.getAuthorities().stream()
-                    .findFirst()
-                    .map(GrantedAuthority::getAuthority)
-                    .orElse("ROLE_USER");
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+        String role = personDetails.getAuthorities().stream()
+                .findFirst()
+                .map(GrantedAuthority::getAuthority)
+                .orElse("ROLE_USER");
 
-            // Generates JWT access and refresh tokens for the authenticated user.
-            String accessToken = jwtUtil.generateToken(personDetails.getUsername(), role);
-            String refreshToken = jwtUtil.generateRefreshToken(personDetails.getUsername());
+        // Generates JWT access and refresh tokens for the authenticated user.
+        String accessToken = jwtUtil.generateToken(personDetails.getUsername(), role);
+        String refreshToken = jwtUtil.generateRefreshToken(personDetails.getUsername());
 
-            //Save refresh token in Redis (by username)
-            refreshTokenService.saveRefreshToken(personDetails.getUsername(), refreshToken);
+        //Save refresh token in Redis (by username)
+        refreshTokenService.saveRefreshToken(personDetails.getUsername(), refreshToken);
 
-            // Stores the refresh token in an HttpOnly cookie to prevent client-side access.
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true) // JS won't be able to read this cookie → XSS attack protection.
-                    .secure(false) // true - only via HTTPS
-                    .path("/") // Specifies that the cookie will be sent for all site paths (/api, /auth, etc.)
-                    .maxAge(Duration.ofDays(7))
-                    .sameSite("Strict") // Cookies are not sent from external sites (hard protection)
-                    .build();
-            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        // Stores the refresh token in an HttpOnly cookie to prevent client-side access.
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true) // JS won't be able to read this cookie → XSS attack protection.
+                .secure(false) // true - only via HTTPS
+                .path("/") // Specifies that the cookie will be sent for all site paths (/api, /auth, etc.)
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Strict") // Cookies are not sent from external sites (hard protection)
+                .build();
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
             /*
             Note:
             Sets a cookie in the HTTP response (adds a Set-Cookie header) so that the browser will save it, since the client-side refresh token is stored in the browser's memory
             */
 
-            // Return the access token and user ID in the response body
-            return ResponseEntity.ok(new JwtResponse(accessToken, personDetails.getId(), personDetails.getUsername()));
-        } catch (LockedException e) {
-            return ResponseEntity.status(HttpStatus.LOCKED)
-                    .body(Map.of("message", "Your account is deactivated. Would you like to restore it?"));
-        } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new JwtResponse(null, null, "Invalid username or password"));
-        }
+        // Return the access token and user ID in the response body
+        return ResponseEntity.ok(new JwtResponse(accessToken, personDetails.getId(), personDetails.getUsername()));
     }
 
     @Operation(summary = "Register new user", description = "Creates a new user account")
