@@ -76,3 +76,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+demo:
+  helpers:
+    enabled: true

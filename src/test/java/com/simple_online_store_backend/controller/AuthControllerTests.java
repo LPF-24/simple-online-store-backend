@@ -1,5 +1,7 @@
 package com.simple_online_store_backend.controller;
 
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.entity.Person;
@@ -49,6 +51,7 @@ import org.springframework.context.annotation.Bean;
 
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.*;
@@ -178,7 +181,7 @@ class AuthControllerTests {
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("refreshToken=" + refresh)))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Path=/")))
-                    .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("SameSite=Strict")))
+                    .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("SameSite=None")))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=")));
 
             // refreshToken действительно сохранён (через заменённый FakeRefreshTokenService)
@@ -546,6 +549,91 @@ class AuthControllerTests {
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
                     .andExpect(jsonPath("$.path").value("/auth/refresh"))
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
+        }
+    }
+
+    @Nested
+    class methodLogoutTests {
+
+        @AfterEach
+        void cleanup() {
+            Mockito.reset(jwtUtil);
+        }
+
+        @Test
+        @DisplayName("logout: 200 OK, refresh token was removed from storage and the cookie was set for deletion")
+        void logout_success_deletesRefresh_andClearsCookie() throws Exception {
+            var username = "alice";
+            var cookieRefresh = "REFRESH.ALICE";
+
+            ((FakeRefreshTokenService) refreshTokenService).saveRefreshToken(username, cookieRefresh);
+
+            var decoded = mock(DecodedJWT.class);
+            var usernameClaim = mock(Claim.class);
+            when(usernameClaim.asString()).thenReturn(username);
+            when(decoded.getClaim("username")).thenReturn(usernameClaim);
+            when(jwtUtil.validateRefreshToken(cookieRefresh)).thenReturn(decoded);
+
+            mockMvc.perform(post("/auth/logout")
+                            .cookie(new jakarta.servlet.http.Cookie("refreshToken", cookieRefresh)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").value("Logged out successfully"))
+                    // Проверяем Set-Cookie на очистку (Max-Age=0, HttpOnly, Secure, Path=/)
+                    .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                            containsString("refreshToken="),
+                            containsString("Max-Age=0"),
+                            containsString("HttpOnly"),
+                            containsString("Secure"),
+                            containsString("Path=/")
+                    )));
+
+            String storedAfter = ((FakeRefreshTokenService) refreshTokenService).getRefreshToken(username);
+            assertEquals(null, storedAfter, "The refresh token must be deleted after logout");
+        }
+
+        @Test
+        @DisplayName("logout: 400, if there is no cookie with refreshToken")
+        void logout_missingCookie_returns400() throws Exception {
+            mockMvc.perform(post("/auth/logout"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("MISSING_COOKIE"))
+                    .andExpect(jsonPath("$.path").value("/auth/logout"))
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
+        }
+
+        @Test
+        @DisplayName("logout: 401, if the refresh JWT is invalid")
+        void logout_invalidRefresh_returns401() throws Exception {
+            var bad = "BAD.REFRESH";
+            when(jwtUtil.validateRefreshToken(bad))
+                    .thenThrow(new com.simple_online_store_backend.exception.InvalidRefreshTokenException("Invalid refresh token"));
+
+            mockMvc.perform(post("/auth/logout")
+                            .cookie(new Cookie("refreshToken", bad)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
+                    .andExpect(jsonPath("$.path").value("/auth/logout"))
+                    .andExpect(jsonPath("$.message", not(blankOrNullString())));
+        }
+
+        @Test
+        @DisplayName("logout: 401, if the refresh JWT has expired")
+        void logout_expiredRefresh_returns401() throws Exception {
+            var expired = "EXPIRED.REFRESH";
+            // Эмулируем просроченный JWT от auth0
+            when(jwtUtil.validateRefreshToken(expired))
+                    .thenThrow(new InvalidRefreshTokenException("The Token has expired"));
+
+            mockMvc.perform(post("/auth/logout")
+                            .cookie(new Cookie("refreshToken", expired)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
+                    .andExpect(jsonPath("$.path").value("/auth/logout"))
                     .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
     }

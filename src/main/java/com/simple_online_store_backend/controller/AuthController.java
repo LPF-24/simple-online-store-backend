@@ -16,10 +16,12 @@ import com.simple_online_store_backend.util.PersonValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -277,15 +279,6 @@ public class AuthController {
                     description = "Refresh token stored in cookies",
                     required = true
             ),
-            parameters = {
-                    @Parameter(
-                            name = "refreshToken",
-                            in = ParameterIn.COOKIE,
-                            description = "refresh token stored in the browser cookie",
-                            required = true,
-                            schema = @Schema(type = "string")
-                    )
-            },
             responses = {
                     @ApiResponse(responseCode = "200", description = "New access token successfully issued",
                             content = @Content(
@@ -324,8 +317,17 @@ public class AuthController {
                                                     "}"
                                     )))
             })
+    @Parameter(
+            name = "refreshToken",
+            in = ParameterIn.COOKIE,
+            description = "Refresh token stored in the browser cookie",
+            required = false,
+            schema = @Schema(type = "string")
+    )
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
+    public ResponseEntity<?> refreshToken(
+            @Parameter(hidden = true)
+            @CookieValue("refreshToken") String refreshToken) {
         String username = jwtUtil.validateRefreshToken(refreshToken).getClaim("username").asString();
         String role = personDetailsService.loadUserByUsername(username).getAuthorities().stream()
                 .findFirst()
@@ -347,13 +349,69 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("access_token", newAccessToken));
     }
 
-    @Operation(summary = "Logout the user", description = "Invalidates the refresh token and deletes the cookie.")
-    @ApiResponse(responseCode = "200", description = "Delete refresh token cookie")
-    @ApiResponse(responseCode = "401", description = "User is not authorized")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
-    @ApiResponse(responseCode = "423", description = "Account is locked (deactivated)")
+    @Operation(
+            summary = "Logout (invalidate refresh token)",
+            description = """
+    Deletes user's refresh token in storage and sets the browser cookie for deletion.
+
+    ### How to test in Swagger UI
+    **200 OK (success):**
+    1) Call `/auth/login` with valid credentials — browser receives `refreshToken` cookie.
+    2) Call `/auth/logout` — you'll get 200 and `Set-Cookie` to clear the cookie.
+
+    **400 MISSING_COOKIE (no cookie present):**
+    - Open Swagger UI in Incognito **or**
+    - DevTools → Application → Cookies → delete `refreshToken`, then call `/auth/logout`.
+
+    **401 INVALID_REFRESH_TOKEN (broken token):**
+    - After login, DevTools → Application → Cookies → edit `refreshToken` value to `abc.def.ghi`, then call `/auth/logout`.
+
+    **Dev shortcuts (enabled on this environment):**
+    - `POST /auth/_issue-refresh` → issues a valid refresh cookie for a demo user.
+    - `POST /auth/_issue-invalid` → sets an invalid refresh cookie.
+    - `POST /auth/_clear-cookie` → removes the cookie.
+    Then call `/auth/logout` to see 200/401/400 respectively.
+    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Logged out",
+                    headers = @Header(name = HttpHeaders.SET_COOKIE,
+                            description = "refreshToken cleared (Max-Age=0; HttpOnly; Secure; Path=/)"),
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(value = "{ \"message\": \"Logged out successfully\" }")
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Missing cookie",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(value = "{ \"status\":400, \"code\":\"MISSING_COOKIE\", \"message\":\"Required cookie 'refreshToken' is missing\", \"path\":\"/auth/logout\" }")
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Invalid/expired refresh token",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(value = "{ \"status\":401, \"code\":\"INVALID_REFRESH_TOKEN\", \"message\":\"Invalid refresh token\", \"path\":\"/auth/logout\" }")
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(value = "{ \"status\":500, \"code\":\"INTERNAL_ERROR\", \"message\":\"Internal server error\", \"path\":\"/auth/logout\" }")
+                    )
+            )
+    })
+    @Parameter(
+            name = "refreshToken",
+            in = ParameterIn.COOKIE,
+            description = "Refresh token cookie set during login",
+            required = false,
+            schema = @Schema(type = "string")
+    )
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@CookieValue("refreshToken") String refreshToken) {
+    public ResponseEntity<?> logout(
+            @Parameter(hidden = true)
+            @CookieValue("refreshToken") String refreshToken) {
         String username = jwtUtil.validateRefreshToken(refreshToken).getClaim("username").asString();
         refreshTokenService.deleteRefreshToken(username);
 

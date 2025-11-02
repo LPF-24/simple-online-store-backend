@@ -1,5 +1,8 @@
 package com.simple_online_store_backend.exception;
 
+import com.auth0.jwt.exceptions.AlgorithmMismatchException;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -74,6 +77,36 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest req) {
         return error(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "The username was not found.", req.getRequestURI());
+    }
+
+    @ExceptionHandler(JWTDecodeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleJwtDecode(
+            JWTDecodeException ex,
+            jakarta.servlet.http.HttpServletRequest req) {
+        return error(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "INVALID_REFRESH_TOKEN",
+                "Invalid refresh token",
+                req.getRequestURI());
+    }
+
+    @ExceptionHandler(SignatureVerificationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleSignature(
+            SignatureVerificationException ex,
+            jakarta.servlet.http.HttpServletRequest req) {
+        return error(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "INVALID_REFRESH_TOKEN",
+                "Invalid refresh token",
+                req.getRequestURI());
+    }
+
+    @ExceptionHandler(AlgorithmMismatchException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAlgMismatch(
+            AlgorithmMismatchException ex,
+            jakarta.servlet.http.HttpServletRequest req) {
+        return error(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "INVALID_REFRESH_TOKEN",
+                "Invalid refresh token",
+                req.getRequestURI());
     }
 
     private ResponseEntity<ErrorResponseDTO> error(HttpStatus status, String code, String message, String path) {
