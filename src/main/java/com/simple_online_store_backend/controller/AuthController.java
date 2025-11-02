@@ -274,49 +274,63 @@ public class AuthController {
 
     @Operation(
             summary = "Refresh user access token",
-            description = "This endpoint allows the user to refresh their access token using the refresh token stored in the cookie.",
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Refresh token stored in cookies",
-                    required = true
+            description = """
+                        Refreshes the user's access token using the refresh token stored in the browser cookie.
+                        
+                        ### How to test in Swagger UI
+                        
+                        **200 OK (success):**
+                        1. Call `/auth/refresh-dev/_issue-refresh?username=<existing>` — browser receives a valid `refreshToken` cookie.
+                        2. Call `/auth/refresh` — you'll get 200 and a new `"access_token"` in the response body.
+                        
+                        **400 MISSING_COOKIE (no cookie present):**
+                        1. Call `/auth/refresh-dev/_clear-cookie` — removes the cookie.
+                        2. Call `/auth/refresh` — you'll get 400 with `code: MISSING_COOKIE`.
+                        
+                        **401 INVALID_REFRESH_TOKEN (broken signature):**
+                        1. Call `/auth/refresh-dev/_issue-invalid?username=<existing>` — sets a refresh cookie with invalid signature.
+                        2. Call `/auth/refresh` — you'll get 401 with `code: INVALID_REFRESH_TOKEN`.
+                        
+                        **401 INVALID_REFRESH_TOKEN (cookie ≠ stored value):**
+                        1. Call `/auth/refresh-dev/_desync-saved?username=<existing>` — creates a mismatch between cookie and storage.
+                        2. Call `/auth/refresh` — you'll get 401 with `code: INVALID_REFRESH_TOKEN`.
+                        
+                        **401 TOKEN_EXPIRED (expired refresh token):**
+                        1. Call `/auth/refresh-dev/_issue-expired?username=<existing>` — issues an expired refresh cookie.
+                        2. Call `/auth/refresh` — you'll get 401 with `code: TOKEN_EXPIRED`.
+                        
+                        **401 USER_NOT_FOUND (username not found in DB):**
+                        1. Call `/auth/refresh-dev/_issue-for-unknown?username=<non_existing>` — creates refresh for non-existent user.
+                        2. Call `/auth/refresh` — you'll get 401 with `code: USER_NOT_FOUND`.
+                        
+                        **Notes:**
+                        - Dev helper endpoints are only available when `demo.helpers.enabled=true`.
+                        - Cookies are `HttpOnly`, `Secure`, and `SameSite=None`; Swagger UI must run with `credentials: include`.
+                        - To re-run tests, just repeat the corresponding dev helper → `/auth/refresh` sequence.
+                        """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "New access token successfully issued",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = "{ \"access_token\": \"...\" }")
+                    )
             ),
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "New access token successfully issued",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    examples = @ExampleObject(
-                                            name = "Issued",
-                                            summary = "New access token successfully issued",
-                                            value = "{ \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJVc2VyIGRldGFpbHMiLCJ1c2VybmFtZSI6Im1hcmlhMTIiLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWF0IjoxNzYyMDI2MTc3LCJpc3MiOiJBRE1JTiIsImV4cCI6MTc2MjAyOTc3N30.xS5bMtYQhyAv83fyGblJYZYu1EtzzuEjPd38soxhmi4\"}"
-                                    ))),
-                    @ApiResponse(responseCode = "401", description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponseDTO.class),
-                                    examples = @ExampleObject(
-                                            name = "Unauthorized",
-                                            summary = "Unauthorized - refresh token expired",
-                                            value = "{\n" +
-                                                    "    \"status\": 401,\n" +
-                                                    "    \"message\": \"The refresh token has expired.\",\n" +
-                                                    "    \"path\": \"/auth/refresh\",\n" +
-                                                    "    \"code\": \"TOKEN_EXPIRED\"\n" +
-                                                    "}"
-                                    ))),
-                    @ApiResponse(responseCode = "400", description = "Bad Request",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponseDTO.class),
-                                    examples = @ExampleObject(
-                                            name = "Bad Request",
-                                            summary = "Bad Request - missing or invalid refresh token",
-                                            value = "{\n" +
-                                                    "    \"status\": 400,\n" +
-                                                    "    \"message\": \"Refresh token is missing or invalid\",\n" +
-                                                    "    \"path\": \"/auth/refresh\",\n" +
-                                                    "    \"code\": \"INVALID_REFRESH_TOKEN\"\n" +
-                                                    "}"
-                                    )))
-            })
+            @ApiResponse(responseCode = "400", description = "Missing cookie",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(value = "{ \"status\":400, \"code\":\"MISSING_COOKIE\", \"message\":\"Required cookie 'refreshToken' is missing\", \"path\":\"/auth/refresh\" }")
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Invalid/expired refresh token or user not found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name="INVALID_REFRESH_TOKEN", value = "{ \"status\":401, \"code\":\"INVALID_REFRESH_TOKEN\", \"message\":\"Invalid refresh token\", \"path\":\"/auth/refresh\" }"),
+                                    @ExampleObject(name="TOKEN_EXPIRED", value = "{ \"status\":401, \"code\":\"TOKEN_EXPIRED\", \"message\":\"The refresh token has expired.\", \"path\":\"/auth/refresh\" }"),
+                                    @ExampleObject(name="USER_NOT_FOUND", value = "{ \"status\":401, \"code\":\"USER_NOT_FOUND\", \"message\":\"The username was not found.\", \"path\":\"/auth/refresh\" }")
+                            }
+                    )
+            )
+    })
     @Parameter(
             name = "refreshToken",
             in = ParameterIn.COOKIE,
@@ -338,10 +352,6 @@ public class AuthController {
 
         if (!refreshToken.equals(savedToken)) {
             throw new InvalidRefreshTokenException("Invalid refresh token");
-        }
-
-        if (refreshToken == null || refreshToken.isEmpty()) {
-            throw new InvalidRefreshTokenException("Refresh token is missing");
         }
 
         String newAccessToken = jwtUtil.generateToken(username, role);
@@ -367,9 +377,9 @@ public class AuthController {
     - After login, DevTools → Application → Cookies → edit `refreshToken` value to `abc.def.ghi`, then call `/auth/logout`.
 
     **Dev shortcuts (enabled on this environment):**
-    - `POST /auth/_issue-refresh` → issues a valid refresh cookie for a demo user.
-    - `POST /auth/_issue-invalid` → sets an invalid refresh cookie.
-    - `POST /auth/_clear-cookie` → removes the cookie.
+    - `POST /auth/logout-dev/_issue-refresh` → issues a valid refresh cookie for a demo user.
+    - `POST /auth/logout-dev/_issue-invalid` → sets an invalid refresh cookie.
+    - `POST /auth/logout-dev/_clear-cookie` → removes the cookie.
     Then call `/auth/logout` to see 200/401/400 respectively.
     """
     )

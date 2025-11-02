@@ -109,6 +109,16 @@ public class GlobalExceptionHandler {
                 req.getRequestURI());
     }
 
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<ErrorResponseDTO> handleExpired(
+            com.auth0.jwt.exceptions.TokenExpiredException ex,
+            jakarta.servlet.http.HttpServletRequest req) {
+        return error(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "TOKEN_EXPIRED",
+                "The refresh token has expired.",
+                req.getRequestURI());
+    }
+
     private ResponseEntity<ErrorResponseDTO> error(HttpStatus status, String code, String message, String path) {
         ErrorResponseDTO dto = new ErrorResponseDTO();
         dto.setStatus(status.value());

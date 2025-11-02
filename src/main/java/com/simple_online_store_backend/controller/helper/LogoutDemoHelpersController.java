@@ -1,4 +1,4 @@
-package com.simple_online_store_backend.controller;
+package com.simple_online_store_backend.controller.helper;
 
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.service.RefreshTokenService;
@@ -6,16 +6,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.*;
-import org.springdoc.core.annotations.ParameterObject;
-import io.swagger.v3.oas.annotations.Hidden;
 
 import java.time.Duration;
 import java.util.Map;
 
 @ConditionalOnProperty(value = "demo.helpers.enabled", havingValue = "true")
 @RestController
-@RequestMapping("/auth")
-// УБЕРИ @Hidden, если хочешь, чтобы HR видел их в Swagger.
+@RequestMapping("/auth/logout-dev")
 // @Hidden
 class LogoutDemoHelpersController {
 
