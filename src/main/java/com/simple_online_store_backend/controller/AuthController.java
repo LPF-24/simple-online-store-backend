@@ -163,10 +163,10 @@ public class AuthController {
         // Stores the refresh token in an HttpOnly cookie to prevent client-side access.
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true) // JS won't be able to read this cookie → XSS attack protection.
-                .secure(false) // true - only via HTTPS
+                .secure(true) // true - only via HTTPS
                 .path("/") // Specifies that the cookie will be sent for all site paths (/api, /auth, etc.)
                 .maxAge(Duration.ofDays(7))
-                .sameSite("Strict") // Cookies are not sent from external sites (hard protection)
+                .sameSite("None")
                 .build();
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
             /*
