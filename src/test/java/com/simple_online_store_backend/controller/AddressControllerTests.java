@@ -17,7 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 import java.util.Optional;
 
@@ -55,16 +55,6 @@ class AddressControllerTests {
         addressRepository.deleteAll();
         peopleRepository.deleteAll();
         Mockito.reset(addressService, addressController);
-    }
-
-    private int createUser(String username, String email, String role) {
-        Person p = new Person();
-        p.setUserName(username);
-        p.setEmail(email);
-        p.setPassword("encoded");
-        p.setRole(role);
-        p.setDeleted(false);
-        return peopleRepository.save(p).getId();
     }
 
     private String validJson(String city, String street, String houseNumber,
@@ -225,16 +215,6 @@ class AddressControllerTests {
 
     @Nested
     class updateAddressTests {
-        @BeforeEach
-        void clean() {
-            // отвязываем адреса, чистим таблицы и сбрасываем моки
-            peopleRepository.findAll().forEach(p -> p.setAddress(null));
-            peopleRepository.saveAll(peopleRepository.findAll());
-            addressRepository.deleteAll();
-            peopleRepository.deleteAll();
-            Mockito.reset(addressController, addressService);
-        }
-
         private int createUser(String username, String email, String role) {
             Person p = new Person();
             p.setUserName(username);
@@ -243,16 +223,6 @@ class AddressControllerTests {
             p.setRole(role);
             p.setDeleted(false);
             return peopleRepository.save(p).getId();
-        }
-
-        private Address createAddress(String city, String street, String house, String apt, String zip) {
-            Address a = new Address();
-            a.setCity(city);
-            a.setStreet(street);
-            a.setHouseNumber(house);
-            a.setApartment(apt);
-            a.setPostalCode(zip);
-            return addressRepository.save(a);
         }
 
         private String json(AddressRequestDTO dto) throws Exception {
@@ -458,6 +428,152 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
                     .andExpect(jsonPath("$.path", containsString("/address/update-address")));
         }
+    }
+
+    @Nested
+    class methodDeleteAddressTests {
+        // === 1) 200 OK: единственный владелец — адрес удаляется из БД, связь у пользователя обнуляется ===
+        @Test
+        void deleteAddress_success_singleOwner_removesRow() throws Exception {
+            int userId = createUser("user1", "user1@example.com", "ROLE_USER");
+            Address addr = createAddress("Berlin", "Main Street", "12A", "45", "10115");
+
+            // привяжем адрес пользователю
+            Person u = peopleRepository.findById(userId).orElseThrow();
+            u.setAddress(addr);
+            peopleRepository.save(u);
+
+            long beforeAddrCount = addressRepository.count();
+            doReturn(userId).when(addressController).getUserId();
+
+            mvc.perform(delete("/address/delete-address")
+                            .with(user("user1").roles("USER")))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message", containsString("deleted")));
+
+            // Проверим состояние после удаления
+            Person updated = peopleRepository.findById(userId).orElseThrow();
+            assertNull(updated.getAddress(), "Person.address must be null after deletion");
+            assertEquals(beforeAddrCount - 1, addressRepository.count(), "Address row must be removed from DB");
+            assertFalse(addressRepository.findById(addr.getId()).isPresent(), "Address must not exist anymore");
+        }
+
+        // === 2) 200 OK: адрес общий у двух пользователей — у одного отвяжется, но запись не удалится ===
+        @Test
+        void deleteAddress_success_sharedAddress_detachOnly() throws Exception {
+            int userA = createUser("userA", "a@example.com", "ROLE_USER");
+            int userB = createUser("userB", "b@example.com", "ROLE_USER");
+            Address addr = createAddress("Munich", "Ludwigstrasse", "10", "7", "80333");
+
+            // оба пользователя ссылаются на один и тот же адрес
+            Person a = peopleRepository.findById(userA).orElseThrow();
+            Person b = peopleRepository.findById(userB).orElseThrow();
+            a.setAddress(addr);
+            b.setAddress(addr);
+            peopleRepository.save(a);
+            peopleRepository.save(b);
+
+            long beforeAddrCount = addressRepository.count();
+            doReturn(userA).when(addressController).getUserId();
+
+            mvc.perform(delete("/address/delete-address")
+                            .with(user("userA").roles("USER")))
+                    .andExpect(status().isOk());
+
+            // userA больше не ссылается, userB всё ещё ссылается; адрес остался в БД
+            Person a2 = peopleRepository.findById(userA).orElseThrow();
+            Person b2 = peopleRepository.findById(userB).orElseThrow();
+            assertNull(a2.getAddress(), "userA must be detached from address");
+            assertNotNull(b2.getAddress(), "userB must still be attached");
+            assertEquals(beforeAddrCount, addressRepository.count(), "Shared address must not be deleted");
+            assertTrue(addressRepository.findById(addr.getId()).isPresent(), "Address must still exist");
+        }
+
+        // === 3) 404: у пользователя нет адреса ===
+        @Test
+        void deleteAddress_userHasNoAddress_returns404() throws Exception {
+            int userId = createUser("noaddr", "noaddr@example.com", "ROLE_USER");
+            doReturn(userId).when(addressController).getUserId();
+
+            mvc.perform(delete("/address/delete-address")
+                            .with(user("noaddr").roles("USER")))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ENTITY_NOT_FOUND"), equalTo("NOT_FOUND"))))
+                    .andExpect(jsonPath("$.message", anyOf(
+                            containsString("not yet specified"),
+                            containsString("no address")
+                    )))
+                    .andExpect(jsonPath("$.path", containsString("/address/delete-address")));
+        }
+
+        // === 4) 401: нет аутентификации / отсутствует токен ===
+        @Test
+        void deleteAddress_unauthorized_returns401() throws Exception {
+            mvc.perform(delete("/address/delete-address"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),      // если у тебя EntryPoint всегда "INVALID_ACCESS_TOKEN"
+                            equalTo("TOKEN_EXPIRED")
+                    )));
+        }
+
+        // === 5) 403: роль не подходит (например, только ROLE_USER допускается) ===
+        @Test
+        void deleteAddress_forbidden_returns403() throws Exception {
+            int adminId = createUser("admin", "admin@example.com", "ROLE_ADMIN");
+            doReturn(adminId).when(addressController).getUserId();
+
+            mvc.perform(delete("/address/delete-address")
+                            .with(user("admin").roles("ADMIN")))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))));
+        }
+
+        // === 6) 500: сервис упал внутри deleteAddress ===
+        @Test
+        void deleteAddress_serviceThrows_returns500() throws Exception {
+            int userId = createUser("userX", "ux@example.com", "ROLE_USER");
+            Address addr = createAddress("Cologne", "Domstrasse", "1", "1", "50667");
+            Person u = peopleRepository.findById(userId).orElseThrow();
+            u.setAddress(addr);
+            peopleRepository.save(u);
+
+            doReturn(userId).when(addressController).getUserId();
+
+            doThrow(new RuntimeException("DB down"))
+                    .when(addressService).deleteAddress(anyInt());
+
+            mvc.perform(delete("/address/delete-address")
+                            .with(user("userX").roles("USER")))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.status").value(500))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                    .andExpect(jsonPath("$.path", containsString("/address/delete-address")));
+        }
+    }
+
+    private Address createAddress(String city, String street, String house, String apt, String zip) {
+        Address a = new Address();
+        a.setCity(city);
+        a.setStreet(street);
+        a.setHouseNumber(house);
+        a.setApartment(apt);
+        a.setPostalCode(zip);
+        return addressRepository.save(a);
+    }
+
+    private int createUser(String username, String email, String role) {
+        Person p = new Person();
+        p.setUserName(username);
+        p.setEmail(email);
+        p.setPassword("encoded");
+        p.setRole(role);
+        p.setDeleted(false);
+        return peopleRepository.save(p).getId();
     }
 }
 

@@ -12,4 +12,5 @@ public interface PeopleRepository extends JpaRepository<Person, Integer> {
     Optional<Person> findFirstByEmail(String email);
     List<Person> findAllByRole(String role);
     Optional<Address> findAddressById(int addressId);
+    Boolean existsByAddress(Address address);
 }

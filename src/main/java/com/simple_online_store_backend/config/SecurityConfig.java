@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.config;
 
+import com.simple_online_store_backend.exception.CustomAccessDeniedHandler;
 import com.simple_online_store_backend.exception.CustomAuthenticationEntryPoint;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PersonDetailsService;
@@ -31,10 +32,12 @@ public class SecurityConfig {
 
     private final JWTFilter jwtFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
-    public SecurityConfig(JWTFilter jwtFilter, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) {
+    public SecurityConfig(JWTFilter jwtFilter, CustomAuthenticationEntryPoint customAuthenticationEntryPoint, CustomAccessDeniedHandler customAccessDeniedHandler) {
         this.jwtFilter = jwtFilter;
         this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
+        this.customAccessDeniedHandler = customAccessDeniedHandler;
     }
 
     /**
@@ -86,7 +89,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/logout-dev/**", "/auth/refresh-dev/**", "/auth/dev/**").permitAll()
                         .requestMatchers("/address/add-address", "/address/update-address",
                                 "/people/deactivate-account", "/orders/create-order", "/orders/all-my-orders", "/orders/{id}/cancel-order",
-                                "/orders/{id}/reactivate-order").hasAuthority("ROLE_USER")
+                                "/orders/{id}/reactivate-order", "/address/delete-address").hasAuthority("ROLE_USER")
                         .requestMatchers("/product/add-product", "/product/{id}/update-product",
                                 "/pickup/add-pickup-location", "/pickup/{id}/close-pick-up-location", "/pickup/{id}/open-pick-up-location",
                                 "/pickup/{id}/update-pick-up-location", "/orders").hasAuthority("ROLE_ADMIN")
@@ -116,6 +119,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler)
                 )
 
                 .build();

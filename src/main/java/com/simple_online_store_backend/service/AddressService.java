@@ -62,6 +62,26 @@ public class AddressService {
         return addressMapper.mapAddressToResponseDTO(addressToUpdate);
     }
 
+    @Transactional
+    public void deleteAddress(int userId) {
+        Person person = peopleRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        Address address = person.getAddress();
+        if (address == null) {
+            throw new EntityNotFoundException("User has not yet specified any address");
+        }
+
+        person.setAddress(null);  // отвязываем адрес от пользователя
+        peopleRepository.save(person);
+
+        // Если этот адрес больше никем не используется, удаляем его из БД
+        boolean usedByOthers = peopleRepository.existsByAddress(address);
+        if (!usedByOthers) {
+            addressRepository.delete(address);
+        }
+    }
+
     private String[] getNullPropertyNames(Object source) {
         try {
             return Arrays.stream(Introspector.getBeanInfo(source.getClass(), Object.class)

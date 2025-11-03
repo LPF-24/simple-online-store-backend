@@ -22,6 +22,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @Tag(name = "Address", description = "Endpoints for work with address")
 @RequestMapping("/address")
 @RestController
@@ -482,6 +484,110 @@ public class AddressController {
 
         AddressResponseDTO updatedAddress = addressService.updateAddress(addressId, dto);
         return ResponseEntity.ok(updatedAddress);
+    }
+
+    @Operation(
+            summary = "Delete user's address",
+            description = """
+                Deletes the currently linked address for the authenticated user.  
+                Returns a confirmation message.
+
+                ### Behavior:
+                - If the user has no address, returns 404 (ENTITY_NOT_FOUND).
+                - If the user is locked, returns 423 (ACCOUNT_LOCKED).
+                - Requires valid JWT access token.
+
+                ### How to test in Swagger UI:
+                **200 OK (success)**
+                1. Login as `ROLE_USER` → copy `token`.
+                2. Authorize → call `/address/add-address` with valid JSON.
+                3. Call `/address/delete-address`.
+                4. You’ll get 200 OK and a confirmation message.
+
+                **404 ENTITY_NOT_FOUND:**
+                - Try calling after deleting or before assigning any address.
+
+                **423 ACCOUNT_LOCKED:**
+                - Lock the user via `/auth/dev/_lock?username=<user>` and retry.
+
+                **401 / 403:**
+                - No or invalid token → 401.
+                - Admin token → 403 (forbidden).
+
+                **Notes:**
+                - Dev endpoints available only if `demo.helpers.enabled=true`.
+                - This endpoint affects only the calling user (cannot delete others’ addresses).
+                """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Address successfully deleted",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "message": "Address successfully deleted"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "404", description = "User has no address to delete",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "status": 404,
+                                          "code": "ENTITY_NOT_FOUND",
+                                          "message": "User has not yet specified any address",
+                                          "path": "/address/delete-address"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "status": 401,
+                                          "code": "UNAUTHORIZED",
+                                          "message": "Authentication is required to access this resource",
+                                          "path": "/address/delete-address"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "403", description = "Forbidden (not a regular user)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "status": 403,
+                                          "code": "ACCESS_DENIED",
+                                          "message": "Access is denied",
+                                          "path": "/address/delete-address"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "423", description = "User account locked",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "status": 423,
+                                          "code": "ACCOUNT_LOCKED",
+                                          "message": "Your account is deactivated. Would you like to restore it?",
+                                          "path": "/address/delete-address"
+                                        }
+                                        """
+                            )))
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/delete-address")
+    public ResponseEntity<Map<String, String>> deleteAddress() {
+        int userId = getUserId();
+        addressService.deleteAddress(userId);
+        return ResponseEntity.ok(Map.of("message", "Address successfully deleted"));
     }
 
     public int getUserId() {
