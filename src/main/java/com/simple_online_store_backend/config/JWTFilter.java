@@ -22,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -33,7 +34,23 @@ public class JWTFilter extends OncePerRequestFilter {
 
     private final JWTUtil jwtUtil;
     private final PersonDetailsService personDetailsService;
-    private final AuthenticationEntryPoint authenticationEntryPoint; // ⟵ добавили
+    private final AuthenticationEntryPoint authenticationEntryPoint;
+    private static final AntPathMatcher PATHS = new AntPathMatcher();
+    private static final List<String> AUTH_WHITELIST = List.of(
+            "/auth/dev/**",
+            "/auth/logout-dev/**",
+            "/auth/refresh-dev/**",
+            "/swagger-ui/**", "/v3/api-docs/**"
+    );
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        for (String pat : AUTH_WHITELIST) {
+            if (PATHS.match(pat, path)) return true;  // НЕ фильтруем эти пути
+        }
+        return false;
+    }
 
     @Autowired
     public JWTFilter(JWTUtil jwtUtil,
