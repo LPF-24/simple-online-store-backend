@@ -247,7 +247,7 @@ public class AddressController {
     @ApiResponse(responseCode = "403", description = "User is authenticated but not allowed to access this resource")
     @ApiResponse(responseCode = "400", description = "Request is invalid or missing required parameters")
     @SecurityRequirement(name = "bearerAuth")
-    @RequestMapping(value = "/update-address", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @PatchMapping(value = "/update-address")
     public ResponseEntity<AddressResponseDTO> updateAddress(@RequestBody @Valid AddressRequestDTO dto,
                                                             BindingResult bindingResult) {
         if (bindingResult.hasErrors())
