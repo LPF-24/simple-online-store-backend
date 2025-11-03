@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class OrderAllMyOrdersIT {
+class OrderControllerTest {
 
     @Autowired MockMvc mvc;
 
@@ -156,6 +156,108 @@ class OrderAllMyOrdersIT {
                         .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
                         .andExpect(jsonPath("$.path").value("/orders/all-my-orders"));
 
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+    }
+
+    @Nested
+    class methodGetOrderTests {
+        // ===== 200: владелец читает свой заказ =====
+        @Test
+        void getOrder_ownerUser_returns200() throws Exception {
+            Person owner = saveUser("maria", "maria@example.com", "ROLE_USER");
+            Order ord = order(owner, OrderStatus.PENDING);
+
+            mvc.perform(get("/orders/{id}", ord.getId())
+                            .with(authentication(auth(owner)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(ord.getId()))
+                    .andExpect(jsonPath("$.status").value("PENDING"));
+        }
+
+        // ===== 200: админ может читать любой заказ =====
+        @Test
+        void getOrder_adminCanViewAnyOrder_returns200() throws Exception {
+            Person owner = saveUser("john", "john@example.com", "ROLE_USER");
+            Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            Order ord = order(owner, OrderStatus.CANCELLED);
+
+            mvc.perform(get("/orders/{id}", ord.getId())
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(ord.getId()))
+                    .andExpect(jsonPath("$.status").value("CANCELLED"));
+        }
+
+        // ===== 403: чужой заказ обычному пользователю запрещён =====
+        @Test
+        void getOrder_otherUser_returns403() throws Exception {
+            Person owner = saveUser("kate", "kate@example.com", "ROLE_USER");
+            Person other = saveUser("nick", "nick@example.com", "ROLE_USER");
+            Order ord = order(owner, OrderStatus.PENDING);
+
+            mvc.perform(get("/orders/{id}", ord.getId())
+                            .with(authentication(auth(other)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                    .andExpect(jsonPath("$.path").value("/orders/" + ord.getId()));
+        }
+
+        // ===== 404: заказ не найден =====
+        @Test
+        void getOrder_notFound_returns404() throws Exception {
+            Person user = saveUser("ghost", "ghost@example.com", "ROLE_USER");
+
+            mvc.perform(get("/orders/{id}", 999999)
+                            .with(authentication(auth(user)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ENTITY_NOT_FOUND"), equalTo("NOT_FOUND"))))
+                    .andExpect(jsonPath("$.message", containsString("not found")))
+                    .andExpect(jsonPath("$.path").value("/orders/999999"));
+        }
+
+        // ===== 401: нет аутентификации (без токена/принципала) =====
+        @Test
+        void getOrder_unauthorized_returns401() throws Exception {
+            // без .with(authentication(...))
+            mvc.perform(get("/orders/{id}", 1).accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED")
+                    )));
+        }
+
+        // ===== 500: сервис упал при обработке =====
+        @Test
+        void getOrder_serviceThrows_returns500() throws Exception {
+            Person user = saveUser("peter", "peter@example.com", "ROLE_USER");
+            Order ord = order(user, OrderStatus.PENDING);
+
+            var authToken = auth(user);
+            // из-за @PreAuthorize на сервисе стабы через spy требуют аутентификацию в контексте
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+            try {
+                doThrow(new RuntimeException("DB down"))
+                        .when(orderService).getOrderById(ord.getId());
+
+                mvc.perform(get("/orders/{id}", ord.getId())
+                                .with(authentication(authToken))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                        .andExpect(jsonPath("$.path").value("/orders/" + ord.getId()));
             } finally {
                 SecurityContextHolder.clearContext();
             }

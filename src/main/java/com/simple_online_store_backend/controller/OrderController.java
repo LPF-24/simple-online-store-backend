@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -185,9 +186,180 @@ public class OrderController {
         return ResponseEntity.ok(listOrders);
     }
 
-    @Operation(summary = "Returns an order by unique ID", description = "Allows user to view information about a specific order")
-    @ApiResponse(responseCode = "200", description = "Order successfully received")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
+    @Operation(
+            summary = "Get order by id",
+            description = """
+        Returns a single order by its identifier.
+
+        **Access:** `ROLE_USER` can view only own orders; `ROLE_ADMIN` can view any order.
+
+        ### How to test in Swagger UI
+
+        **200 OK (owner):**
+        1) `POST /auth/login` as a user with `ROLE_USER` → copy `token`.
+        2) Click **Authorize** → paste `Bearer <token>`.
+        3) `POST /orders/create-order` → create order with **valid JSON**
+        4) Copy the ID of the created order
+        5) `GET /orders/{id}` where `{id}` belongs to this user → **200 OK** with the order JSON.
+
+        **200 OK (admin):**
+        - Login as `ROLE_ADMIN`, authorize, call `GET /orders/{id}` for any existing order → **200 OK**.
+
+        **403 FORBIDDEN (foreign order):**
+        - Login as a `ROLE_USER`, authorize, call `GET /orders/{id}` that belongs to another user → **403 ACCESS_DENIED**.
+
+        **404 NOT_FOUND:**
+        - Call `GET /orders/{id}` with a non-existing id (e.g., 999999) → **404**.
+
+        **401 UNAUTHORIZED:**
+        - Click **Authorize → Logout** (no token) or paste a broken token like `Bearer abc.def.ghi` → **401**.
+        - Expired tokens also result in **401** (`TOKEN_EXPIRED`).
+
+        **423 ACCOUNT_LOCKED:**
+        1) Login as a normal user → Authorize.
+        2) `POST /auth/dev/_lock?username=<that_user>` (dev only).
+        3) Call `GET /orders/{id}` → **423**.
+        4) To restore → `POST /auth/dev/_unlock?username=<that_user>`.
+
+        **Notes:**
+        - Requires a valid JWT access token (bearer auth).
+        - Dev endpoints are available only when `demo.helpers.enabled=true`.
+        """
+    )
+    @Parameter(
+            name = "id",
+            description = "Order identifier",
+            required = true,
+            example = "1",
+            schema = @Schema(type = "integer", format = "int32", minimum = "1")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Order found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = OrderResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    summary = "Order payload",
+                                    value = """
+                        {
+                          "id": 1,
+                          "status": "PENDING",
+                          "createdAt": "2025-01-10T12:30:00Z"
+                        }
+                        """
+                            ))),
+
+            @ApiResponse(responseCode = "401", description = "Unauthorized (no/invalid/expired token)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "UNAUTHORIZED",
+                                            summary = "No token provided",
+                                            value = """
+                            {
+                              "status": 401,
+                              "code": "UNAUTHORIZED",
+                              "message": "Authentication is required to access this resource",
+                              "path": "/orders/1"
+                            }
+                            """
+                                    ),
+                                    @ExampleObject(
+                                            name = "INVALID_ACCESS_TOKEN",
+                                            summary = "Broken token",
+                                            value = """
+                            {
+                              "status": 401,
+                              "code": "INVALID_ACCESS_TOKEN",
+                              "message": "Invalid access token",
+                              "path": "/orders/1"
+                            }
+                            """
+                                    ),
+                                    @ExampleObject(
+                                            name = "TOKEN_EXPIRED",
+                                            summary = "Expired access token",
+                                            value = """
+                            {
+                              "status": 401,
+                              "code": "TOKEN_EXPIRED",
+                              "message": "The access token has expired",
+                              "path": "/orders/1"
+                            }
+                            """
+                                    )
+                            }
+                    )),
+
+            @ApiResponse(responseCode = "403", description = "Forbidden (authenticated, lacks authority or not the owner)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCESS_DENIED",
+                                    summary = "Role or ownership check failed",
+                                    value = """
+                        {
+                          "status": 403,
+                          "code": "ACCESS_DENIED",
+                          "message": "Access is denied",
+                          "path": "/orders/101"
+                        }
+                        """
+                            ))
+            ),
+
+            @ApiResponse(responseCode = "404", description = "Order not found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ENTITY_NOT_FOUND",
+                                    summary = "Order id does not exist",
+                                    value = """
+                        {
+                          "status": 404,
+                          "code": "ENTITY_NOT_FOUND",
+                          "message": "Order not found",
+                          "path": "/orders/999999"
+                        }
+                        """
+                            ))
+            ),
+
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/orders/101"
+                        }
+                        """
+                            ))
+            ),
+
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    summary = "Unhandled exception",
+                                    value = """
+                        {
+                          "status": 500,
+                          "code": "INTERNAL_ERROR",
+                          "message": "Internal server error",
+                          "path": "/orders/101"
+                        }
+                        """
+                            ))
+            )
+    })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDTO> getOrder(@PathVariable("id") int orderId) {

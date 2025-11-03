@@ -10,4 +10,5 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Integer> {
     List<Order> findByPerson(Person person);
     List<Order> findByPersonAndStatus(Person person, OrderStatus status);
+    Boolean existsByPersonId(Integer id);
 }
