@@ -1,5 +1,6 @@
 package com.simple_online_store_backend.config;
 
+import com.simple_online_store_backend.exception.CustomAuthenticationEntryPoint;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PersonDetailsService;
 import org.modelmapper.ModelMapper;
@@ -29,9 +30,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JWTFilter jwtFilter;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
-    public SecurityConfig(JWTFilter jwtFilter) {
+    public SecurityConfig(JWTFilter jwtFilter, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) {
         this.jwtFilter = jwtFilter;
+        this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
     }
 
     /**
@@ -111,6 +114,9 @@ public class SecurityConfig {
 
                 // Embed a JWT filter that checks the Authorization header
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                )
 
                 .build();
     }

@@ -20,6 +20,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -32,11 +33,15 @@ public class JWTFilter extends OncePerRequestFilter {
 
     private final JWTUtil jwtUtil;
     private final PersonDetailsService personDetailsService;
+    private final AuthenticationEntryPoint authenticationEntryPoint; // ⟵ добавили
 
     @Autowired
-    public JWTFilter(JWTUtil jwtUtil, PersonDetailsService personDetailsService) {
+    public JWTFilter(JWTUtil jwtUtil,
+                     PersonDetailsService personDetailsService,
+                     AuthenticationEntryPoint authenticationEntryPoint) {
         this.jwtUtil = jwtUtil;
         this.personDetailsService = personDetailsService;
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Override
@@ -52,10 +57,13 @@ public class JWTFilter extends OncePerRequestFilter {
 
                 String token = authHeader.substring(7);
 
-                DecodedJWT decoded = jwtUtil.validateToken(token);
+                DecodedJWT decoded = jwtUtil.validateToken(token); // может кинуть TokenExpiredException / JWTVerificationException
                 String username = decoded.getClaim("username").asString();
                 if (username == null || username.isBlank()) {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token: missing username");
+                    request.setAttribute("auth.error.code", "INVALID_ACCESS_TOKEN");
+                    request.setAttribute("auth.error.message", "Invalid access token (missing username claim)");
+                    authenticationEntryPoint.commence(request, response,
+                            new org.springframework.security.authentication.InsufficientAuthenticationException("invalid"));
                     return;
                 }
 
@@ -65,33 +73,50 @@ public class JWTFilter extends OncePerRequestFilter {
                     throw new org.springframework.security.authentication.LockedException(
                             "Your account is deactivated. Would you like to restore it?");
                 }
-                /* Возможно, на будущее
-                if (!user.isEnabled()) {
-                    throw new org.springframework.security.authentication.DisabledException("Account is disabled");
-                }*/
+                // если используешь enabled:
+                // if (!user.isEnabled()) throw new DisabledException("Account is disabled");
 
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
 
             chain.doFilter(request, response);
 
-        } catch (TokenExpiredException e) {
+        } catch (com.auth0.jwt.exceptions.TokenExpiredException e) {
             log.warn("JWT expired: {}", e.getMessage());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "The token has expired");
-        } catch (JWTVerificationException e) {
+            request.setAttribute("auth.error.code", "TOKEN_EXPIRED");
+            request.setAttribute("auth.error.message", "The access token has expired");
+            authenticationEntryPoint.commence(request, response,
+                    new org.springframework.security.authentication.InsufficientAuthenticationException("expired"));
+        } catch (com.auth0.jwt.exceptions.JWTVerificationException e) {
             log.warn("JWT verification failed: {}", e.getMessage());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
-        } catch (UsernameNotFoundException e) {
+            request.setAttribute("auth.error.code", "INVALID_ACCESS_TOKEN");
+            request.setAttribute("auth.error.message", "Invalid access token");
+            authenticationEntryPoint.commence(request, response,
+                    new org.springframework.security.authentication.InsufficientAuthenticationException("invalid"));
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
             log.warn("User not found for token: {}", e.getMessage());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "The username was not found.");
-        } catch (LockedException | DisabledException e) {
+            request.setAttribute("auth.error.code", "USER_NOT_FOUND");
+            request.setAttribute("auth.error.message", "The username was not found.");
+            authenticationEntryPoint.commence(request, response,
+                    new org.springframework.security.authentication.InsufficientAuthenticationException("user-not-found"));
+        } catch (org.springframework.security.authentication.LockedException
+                 | org.springframework.security.authentication.DisabledException e) {
             log.warn("Account locked/disabled: {}", e.getMessage());
-            response.sendError(423, "Your account is deactivated. Would you like to restore it?");
+            response.setStatus(423);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("""
+              {"status":423,"code":"ACCOUNT_LOCKED","message":"Your account is deactivated. Would you like to restore it?","path":"%s"}
+            """.formatted(request.getRequestURI()));
         } catch (Exception e) {
             log.error("Unexpected error in JWT filter", e);
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("""
+              {"status":500,"code":"INTERNAL_ERROR","message":"Internal server error","path":"%s"}
+            """.formatted(request.getRequestURI()));
         }
     }
 }
