@@ -73,12 +73,22 @@ public class AuthController {
                             schema = @Schema(implementation = LoginRequestDTO.class),
                             examples = {
                                     @ExampleObject(
-                                            name = "Valid authentication",
-                                            summary = "All required fields present",
+                                            name = "Valid authentication for ROLE_ADMIN",
+                                            summary = "ROLE_ADMIN: All required fields present",
                                             value = """
                                                   {
                                                     "username": "admin",
                                                     "password": "ChangeMe_123!"
+                                                  }
+                                                  """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Valid authentication for ROLE_USER",
+                                            summary = "ROLE_USER: All required fields present",
+                                            value = """
+                                                  {
+                                                    "username": "user",
+                                                    "password": "user123!"
                                                   }
                                                   """
                                     ),

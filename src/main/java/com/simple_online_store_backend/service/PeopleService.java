@@ -75,6 +75,16 @@ public class PeopleService {
         peopleRepository.save(person);
     }
 
+    // Only for Swagger (OpenAPI)
+    @Transactional
+    public boolean setLocked(String username, boolean locked) {
+        var person = peopleRepository.findByUserName(username)
+                .orElseThrow(() -> new EntityNotFoundException("Person not found"));
+        person.setDeleted(locked);
+        peopleRepository.save(person);
+        return person.getDeleted();
+    }
+
     @Transactional
     public void restoreAccount(String username, String rawPassword) {
         Person person = peopleRepository.findByUserName(username)

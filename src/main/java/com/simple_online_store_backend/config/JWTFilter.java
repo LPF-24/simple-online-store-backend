@@ -1,7 +1,10 @@
 package com.simple_online_store_backend.config;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.simple_online_store_backend.security.JWTUtil;
+import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PersonDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,10 +13,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -22,7 +28,7 @@ import java.util.List;
 
 @Component
 public class JWTFilter extends OncePerRequestFilter {
-    private final Logger logger = LoggerFactory.getLogger(JWTFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(JWTFilter.class);
 
     private final JWTUtil jwtUtil;
     private final PersonDetailsService personDetailsService;
@@ -34,42 +40,58 @@ public class JWTFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws IOException, ServletException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain) throws IOException, ServletException {
+        String authHeader = request.getHeader("Authorization");
+        log.debug("Authorization header = {}", authHeader);
+
         try {
-            String authHeader = request.getHeader("Authorization");
-            logger.info("Authorization header = {}", authHeader);
+            if (authHeader != null && authHeader.startsWith("Bearer ")
+                    && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String jwt = authHeader.substring(7);
-                DecodedJWT decodedJWT = jwtUtil.validateToken(jwt);
-                String username = decodedJWT.getClaim("username").asString();
-                String role = decodedJWT.getClaim("role").asString();
+                String token = authHeader.substring(7);
 
-                if (username != null && role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UserDetails userDetails = personDetailsService.loadUserByUsername(username);
-
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null, // Credentials (password) are no longer needed
-                                    List.of(new SimpleGrantedAuthority(role))
-                            );
-
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                DecodedJWT decoded = jwtUtil.validateToken(token);
+                String username = decoded.getClaim("username").asString();
+                if (username == null || username.isBlank()) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token: missing username");
+                    return;
                 }
+
+                PersonDetails user = (PersonDetails) personDetailsService.loadUserByUsername(username);
+
+                if (!user.isAccountNonLocked()) {
+                    throw new org.springframework.security.authentication.LockedException(
+                            "Your account is deactivated. Would you like to restore it?");
+                }
+                /* Возможно, на будущее
+                if (!user.isEnabled()) {
+                    throw new org.springframework.security.authentication.DisabledException("Account is disabled");
+                }*/
+
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(auth);
             }
+
+            chain.doFilter(request, response);
+
+        } catch (TokenExpiredException e) {
+            log.warn("JWT expired: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "The token has expired");
+        } catch (JWTVerificationException e) {
+            log.warn("JWT verification failed: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+        } catch (UsernameNotFoundException e) {
+            log.warn("User not found for token: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "The username was not found.");
+        } catch (LockedException | DisabledException e) {
+            log.warn("Account locked/disabled: {}", e.getMessage());
+            response.sendError(423, "Your account is deactivated. Would you like to restore it?");
         } catch (Exception e) {
-            logger.error("Error in JWT filter: {}", e.getMessage(), e);
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
-            return;
-            /*
-            Be sure to exit, otherwise a "double send" error will occur: both the error and the attempt
-            will be sent filterChain.doFilter(request, response);
-             */
+            log.error("Unexpected error in JWT filter", e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
         }
-
-        filterChain.doFilter(request, response);
     }
-
 }
