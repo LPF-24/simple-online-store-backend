@@ -694,12 +694,161 @@ public class OrderController {
         return ResponseEntity.ok(adminService.findAllOrders());
     }
 
-    @Operation(summary = "Cancel an order", description = "Changes the order status to CANCELLED")
-    @ApiResponse(responseCode = "200", description = "Order successfully cancelled")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
-    @ApiResponse(responseCode = "403", description = "User is authenticated but not allowed to access this resource")
+    @Operation(
+            summary = "Cancel order",
+            description = """
+        Cancels an order owned by the authenticated user. Only orders with status `PENDING` can be cancelled.
+
+        ### How to test in Swagger UI
+
+        **200 OK (success):**
+        1. `POST /auth/login` as `ROLE_USER` (the *owner* of the order) → copy `token`.
+        2. Click **Authorize** → `Bearer <token>`.
+        3. `PATCH /orders/{id}/cancel-order` with a valid existing order id in `PENDING` → you'll get the updated order with status `CANCELLED`.
+
+        **400 VALIDATION_ERROR:**
+        - Try to cancel an order with status not equal to `PENDING` (e.g., `SHIPPED`) → `400`.
+
+        **401 UNAUTHORIZED:**
+        - No token / invalid token → `401`.
+
+        **403 FORBIDDEN / ACCESS_DENIED:**
+        - Logged in as a different user (not the owner), or without `ROLE_USER` → `403`.
+
+        **404 ENTITY_NOT_FOUND:**
+        - Use a non-existing order id (e.g., `1073741824`) → `404`.
+
+        **Notes:**
+        - You must be the order owner.
+        - Only `PENDING` orders can be cancelled.
+        - Response is a concise `OrderResponseDTO`.
+        """
+    )
+    @Parameter(
+            name = "id",
+            description = "Order ID to cancel",
+            example = "101",
+            required = true,
+            in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Order successfully cancelled",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = OrderResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                        {
+                                          "id": 101,
+                                          "status": "CANCELLED",
+                                          "person": { "id": 2, "userName": "maria" },
+                                          "products": [
+                                            { "id": 1, "productName": "Phone", "price": 499.99 },
+                                            { "id": 2, "productName": "Case",  "price": 19.99 }
+                                          ],
+                                          "pickupLocation": null,
+                                          "address": {
+                                            "city": "Berlin",
+                                            "street": "Main Street",
+                                            "houseNumber": "12A",
+                                            "postalCode": "10115",
+                                            "apartment": "45"
+                                          }
+                                        }
+                                        """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Validation failed",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "VALIDATION_ERROR (not PENDING)",
+                                    value = """
+                                {
+                                  "status": 400,
+                                  "code": "VALIDATION_ERROR",
+                                  "message": "Only orders with status PENDING can be cancelled",
+                                  "path": "/orders/101/cancel-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "UNAUTHORIZED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "UNAUTHORIZED",
+                                  "message": "Full authentication is required to access this resource",
+                                  "path": "/orders/101/cancel-order"
+                                }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The refresh token has expired.",
+                                  "path": "/orders/101/cancel-order"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden (not the owner or insufficient role)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCESS_DENIED",
+                                    value = """
+                                {
+                                  "status": 403,
+                                  "code": "ACCESS_DENIED",
+                                  "message": "You are not authorized to cancel this order",
+                                  "path": "/orders/101/cancel-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "Order not found",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ENTITY_NOT_FOUND",
+                                    value = """
+                                {
+                                  "status": 404,
+                                  "code": "ENTITY_NOT_FOUND",
+                                  "message": "Order with ID 1073741824 not found",
+                                  "path": "/orders/1073741824/cancel-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    value = """
+                                {
+                                  "status": 500,
+                                  "code": "INTERNAL_ERROR",
+                                  "message": "Internal server error",
+                                  "path": "/orders/101/cancel-order"
+                                }"""
+                            )
+                    )
+            )
+    })
     @SecurityRequirement(name = "bearerAuth")
-    @RequestMapping(value = "/{id}/cancel-order", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @PatchMapping("/{id}/cancel-order")
     public ResponseEntity<OrderResponseDTO> cancelOrder(@PathVariable("id") int orderId) {
         OrderResponseDTO response = orderService.cancelOrder(orderId);
         return ResponseEntity.ok(response);

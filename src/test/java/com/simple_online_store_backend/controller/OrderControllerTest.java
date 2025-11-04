@@ -671,5 +671,103 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders"));
         }
     }
+
+    @Nested
+    class methodCancelOrderTests {
+
+        // ===== 200 OK: владелец (ROLE_USER) успешно отменяет PENDING-заказ =====
+        @Test
+        void cancelOrder_owner_success_returns200() throws Exception {
+            Person owner = saveUser("maria", "maria@example.com", "ROLE_USER");
+            Order ord = order(owner, OrderStatus.PENDING);
+
+            mvc.perform(patch("/orders/{id}/cancel-order", ord.getId())
+                            .with(authentication(auth(owner)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(ord.getId()))
+                    .andExpect(jsonPath("$.status").value("CANCELLED"))
+                    .andExpect(jsonPath("$.person.id").value(owner.getId()))
+                    .andExpect(jsonPath("$.person.userName").value(owner.getUserName()));
+        }
+
+        // ===== 403 FORBIDDEN: другой пользователь пытается отменить чужой заказ =====
+        @Test
+        void cancelOrder_otherUser_forbidden_returns403() throws Exception {
+            Person owner = saveUser("kate", "kate@example.com", "ROLE_USER");
+            Person other = saveUser("nick", "nick@example.com", "ROLE_USER");
+            Order ord = order(owner, OrderStatus.PENDING);
+
+            mvc.perform(patch("/orders/{id}/cancel-order", ord.getId())
+                            .with(authentication(auth(other)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                    .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/cancel-order"));
+        }
+
+        // ===== 403 FORBIDDEN: админ не имеет права отменять чужие заказы как пользователь =====
+        @Test
+        void cancelOrder_admin_forbidden_returns403() throws Exception {
+            Person owner = saveUser("john", "john@example.com", "ROLE_USER");
+            Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            Order ord = order(owner, OrderStatus.PENDING);
+
+            mvc.perform(patch("/orders/{id}/cancel-order", ord.getId())
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                    .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/cancel-order"));
+        }
+
+        // ===== 400 VALIDATION_ERROR: отменяем не-PENDING заказ =====
+        @Test
+        void cancelOrder_notPending_validationError_returns400() throws Exception {
+            Person owner = saveUser("anna", "anna@example.com", "ROLE_USER");
+            Order ord = order(owner, OrderStatus.SHIPPED);
+
+            mvc.perform(patch("/orders/{id}/cancel-order", ord.getId())
+                            .with(authentication(auth(owner)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.message").value("Only orders with status PENDING can be cancelled"))
+                    .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/cancel-order"));
+        }
+
+        // ===== 404 ENTITY_NOT_FOUND: заказ не найден =====
+        @Test
+        void cancelOrder_notFound_returns404() throws Exception {
+            Person user = saveUser("ghost", "ghost@example.com", "ROLE_USER");
+            int unknownId = 1073741824;
+
+            mvc.perform(patch("/orders/{id}/cancel-order", unknownId)
+                            .with(authentication(auth(user)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ENTITY_NOT_FOUND"), equalTo("NOT_FOUND"))))
+                    .andExpect(jsonPath("$.path").value("/orders/" + unknownId + "/cancel-order"));
+        }
+
+        // ===== 401 UNAUTHORIZED: без аутентификации =====
+        @Test
+        void cancelOrder_unauthorized_returns401() throws Exception {
+            mvc.perform(patch("/orders/{id}/cancel-order", 1)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED")
+                    )));
+        }
+    }
 }
 

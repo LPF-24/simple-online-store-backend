@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, Integer> {
     List<Order> findByPerson(Person person);
     List<Order> findByPersonAndStatus(Person person, OrderStatus status);
-    Boolean existsByPersonId(Integer id);
+    Boolean existsByPerson_Id(Integer id);
     @EntityGraph(attributePaths = {"products", "person", "address", "pickupLocation"})
     Optional<Order> findWithDetailsById(Integer id);
 
