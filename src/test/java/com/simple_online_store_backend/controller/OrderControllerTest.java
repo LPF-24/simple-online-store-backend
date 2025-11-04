@@ -1,10 +1,17 @@
 package com.simple_online_store_backend.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.simple_online_store_backend.dto.order.OrderRequestDTO;
+import com.simple_online_store_backend.entity.Address;
 import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.entity.Person;
+import com.simple_online_store_backend.entity.Product;
 import com.simple_online_store_backend.enums.OrderStatus;
+import com.simple_online_store_backend.enums.ProductCategory;
+import com.simple_online_store_backend.repository.AddressRepository;
 import com.simple_online_store_backend.repository.OrderRepository;
 import com.simple_online_store_backend.repository.PeopleRepository;
+import com.simple_online_store_backend.repository.ProductRepository;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.OrderService;
 import org.junit.jupiter.api.*;
@@ -20,12 +27,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -34,12 +43,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OrderControllerTest {
 
     @Autowired MockMvc mvc;
+    @Autowired ObjectMapper objectMapper;
 
     @Autowired PeopleRepository peopleRepository;
-    @Autowired OrderRepository orderRepository;
+    @MockitoSpyBean OrderRepository orderRepository;
+    @Autowired ProductRepository productRepository;
+    @Autowired AddressRepository addressRepository;
 
     @MockitoSpyBean
-    OrderService orderService; // только для сценария 500
+    OrderService orderService;
 
     @BeforeEach
     void setup() {
@@ -261,6 +273,302 @@ class OrderControllerTest {
             } finally {
                 SecurityContextHolder.clearContext();
             }
+        }
+    }
+
+    @Nested
+    class methodAddOrderTests {
+
+        @BeforeEach
+        void clean() {
+            orderRepository.deleteAll();
+            addressRepository.deleteAll();
+            productRepository.deleteAll();
+            peopleRepository.deleteAll();
+            Mockito.reset(orderService, orderRepository);
+            SecurityContextHolder.clearContext();
+        }
+
+        private Person saveUser(String username, String email, String role, boolean deleted) {
+            Person p = new Person();
+            p.setUserName(username);
+            p.setEmail(email);
+            p.setPassword("encoded");
+            p.setRole(role);
+            p.setDeleted(deleted);
+            return peopleRepository.save(p);
+        }
+
+        private UsernamePasswordAuthenticationToken auth(Person p) {
+            var pd = new PersonDetails(p);
+            return new UsernamePasswordAuthenticationToken(
+                    pd, null, List.of(new SimpleGrantedAuthority(p.getRole())));
+        }
+
+        private Product saveProduct(String name, boolean available, BigDecimal price) {
+            Product pr = new Product();
+            pr.setProductName(name);
+            pr.setProductDescription(name + " desc");
+            pr.setProductCategory(ProductCategory.COMPONENTS);
+            pr.setPrice(price);
+            pr.setAvailability(available);
+            return productRepository.save(pr);
+        }
+
+        private Address saveAddress(String city, String street, String house, String apt, String zip) {
+            Address a = new Address();
+            a.setCity(city);
+            a.setStreet(street);
+            a.setHouseNumber(house);
+            a.setApartment(apt);
+            a.setPostalCode(zip);
+            return addressRepository.save(a);
+        }
+
+        private String json(Object dto) throws Exception {
+            return objectMapper.writeValueAsString(dto);
+        }
+
+        private com.simple_online_store_backend.dto.order.OrderCreateRequest req(
+                List<Integer> productIds, Integer addressId, Integer pickupLocationId) {
+            var r = new com.simple_online_store_backend.dto.order.OrderCreateRequest();
+            r.setProductIds(productIds);
+            r.setAddressId(addressId);
+            r.setPickupLocationId(pickupLocationId);
+            return r;
+        }
+
+        // ===== 1) 200 OK: успешное создание (доставка по адресу) =====
+        @Test
+        void createOrder_success_withAddress_returns200() throws Exception {
+            Person user = saveUser("maria", "maria@example.com", "ROLE_USER", false);
+            Product p1 = saveProduct("Phone", true, new BigDecimal("499.99"));
+            Product p2 = saveProduct("Case",  true, new BigDecimal("19.99"));
+            Address addr = saveAddress("Berlin", "Main Street", "12A", "45", "10115");
+
+            var dto = req(List.of(p1.getId(), p2.getId()), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(jsonPath("$.items", hasSize(2)))
+                    .andExpect(jsonPath("$.address.city").value("Berlin"))
+                    .andExpect(jsonPath("$.pickup").doesNotExist());
+
+            assertThat(orderRepository.count(), greaterThan(0L));
+        }
+
+        // ===== 2) 200 OK: самовывоз (pickup), адрес не указан =====
+        @Test
+        void createOrder_success_withPickup_returns200() throws Exception {
+            Person user = saveUser("nick", "nick@example.com", "ROLE_USER", false);
+            Product p1 = saveProduct("Mouse", true, new BigDecimal("25.00"));
+
+            // тут можно использовать существующий pickup из сидера/БД; если его нет — пропусти тест или создай перед этим
+            // Для простоты используем addressId=null и pickupLocationId=1, если сидер создаёт его с id=1.
+            var dto = req(List.of(p1.getId()), null, 1);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(jsonPath("$.items", hasSize(1)))
+                    .andExpect(jsonPath("$.address").doesNotExist())
+                    .andExpect(jsonPath("$.pickup").exists());
+        }
+
+        // ===== 3) 400: пустой список productIds =====
+        @Test
+        void createOrder_validationError_emptyProducts_returns400() throws Exception {
+            Person user = saveUser("kate", "kate@example.com", "ROLE_USER", false);
+            Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
+
+            var dto = req(List.of(), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("VALIDATION_ERROR"), equalTo("BAD_REQUEST"))))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 4) 404: товар не существует (EntityNotFoundException) =====
+        @Test
+        void createOrder_productNotFound_returns400() throws Exception {
+            Person user = saveUser("john", "john@example.com", "ROLE_USER", false);
+            Address addr = saveAddress("Berlin", "Main Street", "12A", "45", "10115");
+
+            var dto = req(List.of(999999), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("ENTITY_NOT_FOUND"))
+                    .andExpect(jsonPath("$.message", containsString("Product with ID")))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 5) 400: товар недоступен (availability=false) =====
+        @Test
+        void createOrder_productUnavailable_returns400() throws Exception {
+            Person user = saveUser("peter", "peter@example.com", "ROLE_USER", false);
+            Product unavailable = saveProduct("Adapter", false, new BigDecimal("9.99"));
+            Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
+
+            var dto = req(List.of(unavailable.getId()), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.message", containsString("Some products are not available")))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 6) 400: аккаунт пользователя помечен как deleted =====
+        @Test
+        void createOrder_userDeleted_returns400() throws Exception {
+            Person user = saveUser("blocked", "blocked@example.com", "ROLE_USER", true);
+            Product p1 = saveProduct("SSD", true, new BigDecimal("99.00"));
+            Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
+
+            var dto = req(List.of(p1.getId()), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.message", containsString("deactivated")))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 7) 400: некорректный JSON (MESSAGE_NOT_READABLE) =====
+        @Test
+        void createOrder_malformedJson_returns400() throws Exception {
+            Person user = saveUser("json", "json@example.com", "ROLE_USER", false);
+            String malformed = "{ \"productIds\": [1, 2], \"addressId\": 1 "; // обрываем JSON
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(malformed))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("MESSAGE_NOT_READABLE"), equalTo("BAD_REQUEST"))))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 8) 401: нет аутентификации =====
+        @Test
+        void createOrder_unauthorized_returns401() throws Exception {
+            // подготовим валидные ids, чтобы валидация не сработала раньше EntryPoint-а
+            Product p1 = saveProduct("Keyboard", true, new BigDecimal("49.99"));
+            Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
+            var dto = req(List.of(p1.getId()), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED"))));
+        }
+
+        // ===== 9) 403: роль ADMIN (эндпоинт только для ROLE_USER) =====
+        @Test
+        void createOrder_forbidden_admin_returns403() throws Exception {
+            Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN", false);
+            Product p1 = saveProduct("Monitor", true, new BigDecimal("199.00"));
+            Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
+
+            var dto = req(List.of(p1.getId()), addr.getId(), null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 10) 404: адрес не найден =====
+        @Test
+        void createOrder_addressNotFound_returns404() throws Exception {
+            Person user = saveUser("anna", "anna@example.com", "ROLE_USER", false);
+            Product p1 = saveProduct("Cable", true, new BigDecimal("5.99"));
+
+            var dto = req(List.of(p1.getId()), 999_999, null);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ENTITY_NOT_FOUND"), equalTo("NOT_FOUND"))))
+                    .andExpect(jsonPath("$.message", containsString("Address not found")))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 11) 404: пункт выдачи не найден =====
+        @Test
+        void createOrder_pickupNotFound_returns404() throws Exception {
+            Person user = saveUser("olga", "olga@example.com", "ROLE_USER", false);
+            Product p1 = saveProduct("Card", true, new BigDecimal("10.00"));
+
+            var dto = req(List.of(p1.getId()), null, 999_999);
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ENTITY_NOT_FOUND"), equalTo("NOT_FOUND"))))
+                    .andExpect(jsonPath("$.message", containsString("Pickup location not found")))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
+        }
+
+        // ===== 12) 500: падение на сохранении заказа =====
+        @Test
+        void createOrder_serviceThrows_returns500() throws Exception {
+            Person user = saveUser("fail", "fail@example.com", "ROLE_USER", false);
+            Product p1 = saveProduct("Drive", true, new BigDecimal("59.99"));
+            Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
+
+            var dto = req(List.of(p1.getId()), addr.getId(), null);
+
+            // Роняем репозиторий при сохранении (после прохождения всех проверок сервиса)
+            doThrow(new RuntimeException("DB down"))
+                    .when(orderRepository)
+                    .save(org.mockito.ArgumentMatchers.any(com.simple_online_store_backend.entity.Order.class));
+
+            mvc.perform(post("/orders/create-order")
+                            .with(authentication(auth(user)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(dto)))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.status").value(500))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                    .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
     }
 }

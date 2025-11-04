@@ -1,7 +1,6 @@
 package com.simple_online_store_backend.controller;
 
-import com.simple_online_store_backend.dto.order.OrderRequestDTO;
-import com.simple_online_store_backend.dto.order.OrderResponseDTO;
+import com.simple_online_store_backend.dto.order.*;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.service.AdminService;
@@ -181,9 +180,9 @@ public class OrderController {
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/all-my-orders")
-    public ResponseEntity<List<OrderResponseDTO>> allOrdersByCustomer() {
-        List<OrderResponseDTO> listOrders = orderService.findAllOrdersByCustomer();
-        return ResponseEntity.ok(listOrders);
+    public ResponseEntity<List<OrderListItemResponse>> allOrdersByCustomer() {
+        List<OrderListItemResponse> list = orderService.findAllOrdersByCustomer(); // теперь лёгкие DTO
+        return ResponseEntity.ok(list);
     }
 
     @Operation(
@@ -362,24 +361,239 @@ public class OrderController {
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
-    public ResponseEntity<OrderResponseDTO> getOrder(@PathVariable("id") int orderId) {
-        return ResponseEntity.ok(orderService.getOrderById(orderId));
+    public ResponseEntity<OrderDetailsResponse> getOrder(@PathVariable("id") int orderId) {
+        OrderDetailsResponse dto = orderService.getOrderById(orderId); // детальный DTO
+        return ResponseEntity.ok(dto);
     }
 
-    @Operation(summary = "Add an order", description = "Adds an order for the user")
-    @ApiResponse(responseCode = "200", description = "Order successfully added")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
-    @ApiResponse(responseCode = "403", description = "User is authenticated but not allowed to access this resource")
-    @ApiResponse(responseCode = "400", description = "Request is invalid or missing required parameters")
-    @ApiResponse(responseCode = "422", description = "Validation failed on request data")
+    @Operation(
+            summary = "Create a new order",
+            description = """
+            Creates a new order for the authenticated user.
+
+            ### How to test in Swagger UI
+
+            **200 OK (success):**
+            1. `POST /auth/login` as `ROLE_USER` → copy `token`.
+            2. Click **Authorize** → `Bearer <token>`.
+            3. `POST /orders/create-order` with a valid JSON (see examples) → you'll get order with status `PENDING`.
+
+            **400 VALIDATION_ERROR / MESSAGE_NOT_READABLE:**
+            - Send invalid/incomplete JSON or both addressId & pickupLocationId → `400`.
+
+            **401 UNAUTHORIZED:**
+            - No token / broken token → `401`.
+
+            **403 FORBIDDEN:**
+            - If your security forbids admins to create orders, login as `ROLE_ADMIN` → `403`.
+            
+            **404 ENTITY_NOT_FOUND:**
+            - Use a non-existing `addressId` (e.g., 1073741824) with valid `productIds` → 404.
+            - Or use a non-existing `pickupLocationId` (e.g., 1073741824) with valid `productIds` → 404.
+
+            **423 ACCOUNT_LOCKED:**
+            1. Login as user → Authorize → `POST /auth/dev/_lock?username=<user>`.
+            2. Call this endpoint → `423`.
+            3. To restore → `POST /auth/dev/_unlock?username=<user>`.
+
+            **Notes:**
+            - Exactly one of `addressId` or `pickupLocationId` must be provided.
+            - All products must exist and be available.
+            - Returns a detailed order payload.
+            """
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Order creation payload. Exactly one of `addressId` or `pickupLocationId` must be provided.",
+            required = true,
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = OrderCreateRequest.class),
+                    examples = {
+                            @ExampleObject(
+                                    name = "Valid: Home delivery",
+                                    summary = "Products exist; deliver to an existing address",
+                                    value = """
+                                            {
+                                              "productIds": [1, 2],
+                                              "addressId": 1
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "Valid: Pickup",
+                                    summary = "Products exist; pickup from an active location",
+                                    value = """
+                                            {
+                                              "productIds": [1],
+                                              "pickupLocationId": 1
+                                            }
+                                            """
+                            ),
+
+                            @ExampleObject(
+                                    name = "Invalid: No products",
+                                    summary = "Fails @NotEmpty on productIds",
+                                    value = """
+                                            {
+                                              "productIds": [],
+                                              "addressId": 1
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "Invalid: Both addressId and pickupLocationId",
+                                    summary = "Mutually exclusive: provide exactly one target",
+                                    value = """
+                                            {
+                                              "productIds": [1, 2],
+                                              "addressId": 1,
+                                              "pickupLocationId": 1
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "Invalid: Unknown productId",
+                                    summary = "Product with given id does not exist",
+                                    value = """
+                                            {
+                                              "productIds": [1073741824],
+                                              "addressId": 1
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "Invalid: Unknown addressId",
+                                    summary = "Address not found",
+                                    value = """
+                                            {
+                                              "productIds": [1, 2],
+                                              "addressId": 1073741824
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "Invalid: Unknown pickupLocationId",
+                                    summary = "Pickup location not found",
+                                    value = """
+                                            {
+                                              "productIds": [1],
+                                              "pickupLocationId": 1073741824
+                                            }
+                                            """
+                            ),
+
+                            // === MALFORMED JSON → 400 MESSAGE_NOT_READABLE ===
+                            @ExampleObject(
+                                    name = "Malformed JSON",
+                                    summary = "Broken JSON body (will trigger MESSAGE_NOT_READABLE)",
+                                    value = """
+                                            {
+                                              "productIds": [1, 2],
+                                              "addressId": 1
+                                            """
+                            )
+                    }
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Order successfully created",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = OrderDetailsResponse.class),
+                            examples = @ExampleObject(
+                                    name = "OK (home delivery)",
+                                    value = """
+                                            {
+                                              "id": 101,
+                                              "status": "PENDING",
+                                              "ownerId": 2,
+                                              "ownerUserName": "maria",
+                                              "address": {
+                                                "city": "Berlin",
+                                                "street": "Main Street",
+                                                "houseNumber": "12A",
+                                                "apartment": "45",
+                                                "postalCode": "10115"
+                                              },
+                                              "pickup": null,
+                                              "items": [
+                                                { "productId": 1, "productName": "Phone", "price": 499.99, "quantity": 1 },
+                                                { "productId": 2, "productName": "Case",  "price": 19.99,  "quantity": 1 }
+                                              ]
+                                            }
+                                            """
+                            ))),
+            @ApiResponse(responseCode = "400", description = "Validation failed / malformed JSON",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "VALIDATION_ERROR (no products)", value = """
+                                    {
+                                      "status": 400,
+                                      "code": "VALIDATION_ERROR",
+                                      "message": "You must add at least one product",
+                                      "path": "/orders/create-order"
+                                    }"""),
+                                    @ExampleObject(name = "VALIDATION_ERROR (both address & pickup)", value = """
+                                    {
+                                      "status": 400,
+                                      "code": "VALIDATION_ERROR",
+                                      "message": "Either addressId or pickupLocationId must be provided (but not both)",
+                                      "path": "/orders/create-order"
+                                    }"""),
+                                    @ExampleObject(name = "MESSAGE_NOT_READABLE", value = """
+                                    {
+                                      "status": 400,
+                                      "code": "MESSAGE_NOT_READABLE",
+                                      "message": "JSON parse error: Unexpected end-of-input",
+                                      "path": "/orders/create-order"
+                                    }""")
+                            })),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "404", description = "Entity not found (address or pickup location)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "ENTITY_NOT_FOUND (addressId)",
+                                            summary = "Address not found by id",
+                                            value = """
+                                                    {
+                                                      "status": 404,
+                                                      "code": "ENTITY_NOT_FOUND",
+                                                      "message": "Address not found: 1073741824",
+                                                      "path": "/orders/create-order"
+                                                    }
+                                                    """),
+                                    @ExampleObject(
+                                            name = "ENTITY_NOT_FOUND (pickupLocationId)",
+                                            summary = "Pickup location not found by id",
+                                            value = """
+                                                    {
+                                                      "status": 404,
+                                                      "code": "ENTITY_NOT_FOUND",
+                                                      "message": "Pickup location not found: 1073741824",
+                                                      "path": "/orders/create-order"
+                                                    }
+                                                    """)})),
+            @ApiResponse(responseCode = "423", description = "Account locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/create-order")
-    public ResponseEntity<OrderResponseDTO> addOrder(@RequestBody @Valid OrderRequestDTO dto, BindingResult bindingResult) {
+    public ResponseEntity<OrderDetailsResponse> addOrder(@RequestBody @Valid OrderCreateRequest req, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             ErrorUtil.returnErrorsToClient(bindingResult);
         }
-
-        OrderResponseDTO response = orderService.createOrder(dto);
+        OrderDetailsResponse response = orderService.createOrder(req);
         return ResponseEntity.ok(response);
     }
 

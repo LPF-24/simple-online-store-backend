@@ -1,4 +1,4 @@
-package com.simple_online_store_backend.util;
+package com.simple_online_store_backend.util.seeders;
 
 import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.entity.Person;

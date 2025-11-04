@@ -1,17 +1,13 @@
 package com.simple_online_store_backend.service;
 
-import com.simple_online_store_backend.dto.order.OrderRequestDTO;
-import com.simple_online_store_backend.dto.order.OrderResponseDTO;
+import com.simple_online_store_backend.dto.order.*;
 import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.entity.Product;
 import com.simple_online_store_backend.enums.OrderStatus;
 import com.simple_online_store_backend.exception.ValidationException;
 import com.simple_online_store_backend.mapper.OrderMapper;
-import com.simple_online_store_backend.repository.AddressRepository;
-import com.simple_online_store_backend.repository.OrderRepository;
-import com.simple_online_store_backend.repository.PeopleRepository;
-import com.simple_online_store_backend.repository.ProductRepository;
+import com.simple_online_store_backend.repository.*;
 import com.simple_online_store_backend.security.PersonDetails;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -33,82 +29,108 @@ public class OrderService {
     private final PeopleRepository peopleRepository;
     private final ProductRepository productRepository;
     private final AddressRepository addressRepository;
+    private final PickupLocationRepository pickupLocationRepository;
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
-    public OrderService(OrderRepository orderRepository, OrderMapper orderMapper, PeopleRepository peopleRepository, ProductRepository productRepository, AddressRepository addressRepository) {
+    public OrderService(OrderRepository orderRepository, OrderMapper orderMapper, PeopleRepository peopleRepository, ProductRepository productRepository, AddressRepository addressRepository, PickupLocationRepository pickupLocationRepository) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.peopleRepository = peopleRepository;
         this.productRepository = productRepository;
         this.addressRepository = addressRepository;
+        this.pickupLocationRepository = pickupLocationRepository;
     }
 
-    @Transactional
     @PreAuthorize("hasRole('ROLE_USER')")
-    public OrderResponseDTO createOrder(OrderRequestDTO dto) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
-        Person owner = peopleRepository.findByUserName(personDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @Transactional
+    public OrderDetailsResponse createOrder(OrderCreateRequest req) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        var pd = (PersonDetails) auth.getPrincipal();
 
-        // Verifies whether the account is active or marked as deleted.
-        if (owner.getDeleted()) {
+        var owner = peopleRepository.findByUserName(pd.getUsername())
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (Boolean.TRUE.equals(owner.getDeleted())) {
             throw new ValidationException("Your account is deactivated. Please restore your account before placing an order.");
         }
 
-        List<Product> products = dto.getProductsIds().stream()
+        // 1) Продукты
+        var products = req.getProductIds().stream()
                 .map(id -> productRepository.findById(id)
-                        .orElseThrow(() -> new ValidationException("Product with ID " + id + " not found")))
+                        .orElseThrow(() -> new EntityNotFoundException("Product with ID " + id + " not found")))
                 .toList();
 
+        if (products.isEmpty()) {
+            throw new ValidationException("You must add at least one product");
+        }
         if (products.stream().anyMatch(p -> !Boolean.TRUE.equals(p.getAvailability()))) {
             throw new ValidationException("Some products are not available for order");
         }
 
-        Order order = orderMapper.mapRequestToOrder(dto);
-        if (dto.getAddress() != null) {
-            addressRepository.save(dto.getAddress());
-            order.setAddress(dto.getAddress());
+        // 2) Доставка: адрес или ПВЗ
+        var hasAddress = req.getAddressId() != null;
+        var hasPickup  = req.getPickupLocationId() != null;
+        if (hasAddress == hasPickup) {
+            throw new ValidationException("Either addressId or pickupLocationId must be provided (but not both)");
         }
 
+        var order = new Order();
         order.setPerson(owner);
         order.setStatus(OrderStatus.PENDING);
-        order.setProducts(products);
+        order.setProducts(new java.util.ArrayList<>(products));
 
-        Order savedOrder = orderRepository.save(order);
-        logger.info("Id of saved order: {}", savedOrder.getId());
-        return orderMapper.mapEntityToResponse(savedOrder);
+        if (hasAddress) {
+            var address = addressRepository.findById(req.getAddressId())
+                    .orElseThrow(() -> new EntityNotFoundException("Address not found: " + req.getAddressId()));
+            // при желании: проверить принадлежность адреса пользователю
+            order.setAddress(address);
+        } else {
+            var pickup = pickupLocationRepository.findById(req.getPickupLocationId())
+                    .orElseThrow(() -> new EntityNotFoundException("Pickup location not found: " + req.getPickupLocationId()));
+            if (!Boolean.TRUE.equals(pickup.getActive())) {
+                throw new ValidationException("Pickup location must be active");
+            }
+            order.setPickupLocation(pickup);
+        }
+
+        var saved = orderRepository.save(order);
+        return orderMapper.toDetails(saved);
     }
 
     @PreAuthorize("isAuthenticated()")
-    public OrderResponseDTO getOrderById(int orderId) {
-        Order foundOrder = orderRepository.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException("Order with ID " + orderId + " not found"));
+    public OrderDetailsResponse getOrderById(int orderId) {
+        Order foundOrder = orderRepository.findWithDetailsById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found: " + orderId));
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
-        String role = personDetails.getAuthorities().stream()
-                .findFirst().map(GrantedAuthority::getAuthority)
-                .orElse("ROLE_USER");
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth.getPrincipal() instanceof PersonDetails pd)) {
+            throw new AccessDeniedException("You are not authorized to view this order");
+        }
 
-        if (!role.equals("ROLE_ADMIN")) {
-            if (foundOrder.getPerson() == null || !foundOrder.getPerson().getId().equals(personDetails.getId())) {
+        boolean isAdmin = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+
+        if (!isAdmin) {
+            Integer ownerId = (foundOrder.getPerson() != null ? foundOrder.getPerson().getId() : null);
+            if (ownerId == null || !ownerId.equals(pd.getId())) {
                 throw new AccessDeniedException("You are not authorized to view this order");
             }
         }
 
-        return orderMapper.mapEntityToResponse(foundOrder);
+        return orderMapper.toDetails(foundOrder);
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public List<OrderResponseDTO> findAllOrdersByCustomer() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        int customerId = ((PersonDetails) authentication.getPrincipal()).getId();
+    @Transactional(readOnly = true)
+    public List<OrderListItemResponse> findAllOrdersByCustomer() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails pd = (PersonDetails) auth.getPrincipal();
+        Integer userId = pd.getId();
 
-        Person customer = peopleRepository.findById(customerId)
-                .orElseThrow(() -> new EntityNotFoundException("Customer wasn't found"));
-
-        return orderRepository.findByPerson(customer).stream().map(orderMapper::mapEntityToResponse).toList();
+        List<Order> orders = orderRepository.findByPerson_Id(userId);
+        return orders.stream()
+                .map(orderMapper::toListItem).toList();
     }
 
     @Transactional
