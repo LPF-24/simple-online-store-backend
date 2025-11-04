@@ -181,7 +181,7 @@ public class OrderController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/all-my-orders")
     public ResponseEntity<List<OrderListItemResponse>> allOrdersByCustomer() {
-        List<OrderListItemResponse> list = orderService.findAllOrdersByCustomer(); // теперь лёгкие DTO
+        List<OrderListItemResponse> list = orderService.findAllOrdersByCustomer();
         return ResponseEntity.ok(list);
     }
 
@@ -362,7 +362,7 @@ public class OrderController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
     public ResponseEntity<OrderDetailsResponse> getOrder(@PathVariable("id") int orderId) {
-        OrderDetailsResponse dto = orderService.getOrderById(orderId); // детальный DTO
+        OrderDetailsResponse dto = orderService.getOrderById(orderId);
         return ResponseEntity.ok(dto);
     }
 
@@ -597,13 +597,100 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Shows a list of orders for all users")
-    @ApiResponse(responseCode = "200", description = "List successfully received")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
-    @ApiResponse(responseCode = "403", description = "User is authenticated but not allowed to access this resource")
+    @Operation(
+            summary = "Get all orders (admin)",
+            description = """
+        Returns a lightweight list of all orders for administrators.
+
+        Each item contains only: `id`, `status`, `productCount`.
+
+        ### How to test in Swagger UI
+
+        **200 OK (success):**
+        1. `POST /auth/login` as a user with `ROLE_ADMIN` → copy `token`.
+        2. Click **Authorize** → `Bearer <token>`.
+        3. `GET /orders` → you'll get an array of items.
+
+        **401 UNAUTHORIZED:**
+        - No token / malformed token / expired token → `401` (see response schema below).
+
+        **403 FORBIDDEN:**
+        - Logged in without `ROLE_ADMIN` (e.g., `ROLE_USER`) → `403`.
+
+        **Notes:**
+        - Endpoint is admin-only.
+        - Response is a *list* of lightweight items, not full order details.
+        """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of orders (lightweight)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = OrderListItemResponse.class)),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                        [
+                                          { "id": 101, "status": "PENDING",   "productCount": 2 },
+                                          { "id": 102, "status": "SHIPPED",   "productCount": 1 },
+                                          { "id": 103, "status": "CANCELLED", "productCount": 3 }
+                                        ]
+                                        """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The refresh token has expired.",
+                                  "path": "/orders"
+                                }"""),
+                                    @ExampleObject(name = "INVALID_REFRESH_TOKEN", value = """
+                                {
+                                  "status": 401,
+                                  "code": "INVALID_REFRESH_TOKEN",
+                                  "message": "Invalid refresh token",
+                                  "path": "/orders"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "ACCESS_DENIED", value = """
+                        {
+                          "status": 403,
+                          "code": "ACCESS_DENIED",
+                          "message": "Access is denied",
+                          "path": "/orders"
+                        }""")
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "INTERNAL_ERROR", value = """
+                        {
+                          "status": 500,
+                          "code": "INTERNAL_ERROR",
+                          "message": "Internal server error",
+                          "path": "/orders"
+                        }""")
+                    )
+            )
+    })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping()
-    public ResponseEntity<List<OrderResponseDTO>> getAllOrders() {
+    public ResponseEntity<List<OrderListItemResponse>> getAllOrders() {
         return ResponseEntity.ok(adminService.findAllOrders());
     }
 

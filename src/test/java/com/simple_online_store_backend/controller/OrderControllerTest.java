@@ -571,5 +571,105 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
     }
+
+    @Nested
+    class methodAdminGetAllOrders {
+
+        private Order orderWithProducts(Person owner, OrderStatus status, int productCount) {
+            Order o = new Order();
+            o.setPerson(owner);
+            o.setStatus(status);
+
+            var products = new java.util.ArrayList<Product>();
+            for (int i = 0; i < productCount; i++) {
+                Product pr = new Product();
+                pr.setProductName("AdminList-" + i + "-" + System.nanoTime());
+                pr.setProductDescription("Some description");
+                pr.setProductCategory(ProductCategory.COMPONENTS); // <-- ВАЖНО: NOT NULL
+                pr.setPrice(new java.math.BigDecimal("10.00"));
+                pr.setAvailability(Boolean.TRUE);
+                products.add(productRepository.save(pr));
+            }
+            o.setProducts(new java.util.ArrayList<>(products));
+            return orderRepository.save(o);
+        }
+
+        @BeforeEach
+        void clean() {
+            orderRepository.deleteAll();
+            productRepository.deleteAll();
+            peopleRepository.deleteAll();
+        }
+
+        // ===== 200 OK: админ видит список укороченных элементов =====
+        @Test
+        void getAllOrders_admin_success_returnsListItems() throws Exception {
+            Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            Person u1 = saveUser("maria", "maria@example.com", "ROLE_USER");
+            Person u2 = saveUser("john", "john@example.com", "ROLE_USER");
+
+            Order o1 = orderWithProducts(u1, OrderStatus.PENDING,   2);
+            Order o2 = orderWithProducts(u2, OrderStatus.SHIPPED,   1);
+            Order o3 = orderWithProducts(u2, OrderStatus.CANCELLED, 3);
+
+            mvc.perform(get("/orders")
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(3)))
+                    .andExpect(jsonPath("$[0].id").exists())
+                    .andExpect(jsonPath("$[0].status").exists())
+                    .andExpect(jsonPath("$[0].productCount").exists())
+                    .andExpect(jsonPath("$[?(@.id==" + o1.getId() + ")].productCount").value(hasItem(2)))
+                    .andExpect(jsonPath("$[?(@.id==" + o1.getId() + ")].status").value(hasItem("PENDING")))
+                    .andExpect(jsonPath("$[?(@.id==" + o2.getId() + ")].productCount").value(hasItem(1)))
+                    .andExpect(jsonPath("$[?(@.id==" + o2.getId() + ")].status").value(hasItem("SHIPPED")))
+                    .andExpect(jsonPath("$[?(@.id==" + o3.getId() + ")].productCount").value(hasItem(3)))
+                    .andExpect(jsonPath("$[?(@.id==" + o3.getId() + ")].status").value(hasItem("CANCELLED")));
+        }
+
+        // ===== 200 OK: пустая БД → []
+        @Test
+        void getAllOrders_admin_empty_returnsEmptyArray() throws Exception {
+            Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+
+            mvc.perform(get("/orders")
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().json("[]"));
+        }
+
+        // ===== 403: доступ обычному пользователю запрещён
+        @Test
+        void getAllOrders_user_forbidden_returns403() throws Exception {
+            Person user = saveUser("user", "user@example.com", "ROLE_USER");
+            // создадим один заказ для надёжности
+            orderWithProducts(user, OrderStatus.PENDING, 1);
+
+            mvc.perform(get("/orders")
+                            .with(authentication(auth(user)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                    .andExpect(jsonPath("$.path").value("/orders"));
+        }
+
+        // ===== 401: без аутентификации
+        @Test
+        void getAllOrders_unauthorized_returns401() throws Exception {
+            mvc.perform(get("/orders").accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED")
+                    )))
+                    .andExpect(jsonPath("$.path").value("/orders"));
+        }
+    }
 }
 

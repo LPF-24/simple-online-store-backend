@@ -1,10 +1,11 @@
 package com.simple_online_store_backend.service;
 
-import com.simple_online_store_backend.dto.order.OrderResponseDTO;
+import com.simple_online_store_backend.dto.order.OrderListItemResponse;
 import com.simple_online_store_backend.mapper.OrderMapper;
 import com.simple_online_store_backend.repository.OrderRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,7 +21,11 @@ public class AdminService {
     }
 
     @PreAuthorize("hasRole('ROLE_ADMIN')")
-    public List<OrderResponseDTO> findAllOrders() {
-        return orderRepository.findAll().stream().map(orderMapper::mapEntityToResponse).toList();
+    @Transactional(readOnly = true)
+    public List<OrderListItemResponse> findAllOrders() {
+        return orderRepository.findAll()
+                .stream()
+                .map(orderMapper::toListItem)
+                .toList();
     }
 }
