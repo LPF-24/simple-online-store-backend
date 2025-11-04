@@ -707,7 +707,7 @@ public class OrderController {
         3. `PATCH /orders/{id}/cancel-order` with a valid existing order id in `PENDING` → you'll get the updated order with status `CANCELLED`.
 
         **400 VALIDATION_ERROR:**
-        - Try to cancel an order with status not equal to `PENDING` (e.g., `SHIPPED`) → `400`.
+        - Enter the number 3 in the id (Order ID to cancel) field (Try to cancel an order with status not equal to `PENDING` (e.g., `SHIPPED`)) → `400`.
 
         **401 UNAUTHORIZED:**
         - No token / invalid token → `401`.
@@ -727,7 +727,7 @@ public class OrderController {
     @Parameter(
             name = "id",
             description = "Order ID to cancel",
-            example = "101",
+            example = "2",
             required = true,
             in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
     )
@@ -740,7 +740,7 @@ public class OrderController {
                                     name = "OK",
                                     value = """
                                         {
-                                          "id": 101,
+                                          "id": 2,
                                           "status": "CANCELLED",
                                           "person": { "id": 2, "userName": "maria" },
                                           "products": [
@@ -854,12 +854,181 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Reactivate an order", description = "Changes the order status to PENDING")
-    @ApiResponse(responseCode = "200", description = "Order successfully reactivated")
-    @ApiResponse(responseCode = "500", description = "Error inside method")
-    @ApiResponse(responseCode = "403", description = "User is authenticated but not allowed to access this resource")
+    @Operation(
+            summary = "Reactivate order",
+            description = """
+        Reactivates a previously cancelled order for the authenticated user.  
+        Only orders with status `CANCELLED` can be reactivated.
+
+        ### How to test in Swagger UI
+
+        **200 OK (success):**
+        1. `POST /auth/login` as `ROLE_USER` (owner of the order) → copy `token`.
+        2. Click **Authorize** → `Bearer <token>`.
+        3. `PATCH /orders/{id}/reactivate-order` with a valid cancelled order id (In this case **id = 4**) → you'll get the updated order with status `PENDING`.
+
+        **400 VALIDATION_ERROR:**
+        - Enter the number 3 in the id field (ID of the order to reactivate) (Try to reactivate an order whose status is not `CANCELLED` (e.g., `SHIPPED`, `PENDING`)) → `400`.
+
+        **401 UNAUTHORIZED:**
+        - No token / invalid / expired token → `401`.
+
+        **403 FORBIDDEN / ACCESS_DENIED:**
+        - Logged in as a different user (not the owner), or with insufficient role → `403`.
+
+        **404 ENTITY_NOT_FOUND:**
+        - Use a non-existing order id (e.g., `1073741824`) → `404`.
+
+        **423 ACCOUNT_LOCKED:**
+        - Log in as a blocked/deactivated user (check seeded demo data) → `423`.
+
+        **Notes:**
+        - Only the order owner can reactivate.
+        - Only `CANCELLED` orders can be reactivated.
+        - Response is an `OrderResponseDTO` showing the updated order info.
+        """
+    )
+    @Parameter(
+            name = "id",
+            description = "ID of the order to reactivate",
+            example = "2",
+            required = true,
+            in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Order successfully reactivated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = OrderResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                        {
+                                          "id": 4,
+                                          "status": "PENDING",
+                                          "person": { "id": 2, "userName": "user" },
+                                          "products": [
+                                            { "id": 1, "productName": "Phone", "price": 499.99 },
+                                            { "id": 2, "productName": "Case",  "price": 19.99 }
+                                          ],
+                                          "pickupLocation": null,
+                                          "address": {
+                                            "city": "Berlin",
+                                            "street": "Main Street",
+                                            "houseNumber": "12A",
+                                            "apartment": "45",
+                                            "postalCode": "10115"
+                                          }
+                                        }
+                                        """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Validation failed (not CANCELLED)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "VALIDATION_ERROR",
+                                    value = """
+                                {
+                                  "status": 400,
+                                  "code": "VALIDATION_ERROR",
+                                  "message": "Only orders with status CANCELLED can be reactivated",
+                                  "path": "/orders/102/reactivate-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "UNAUTHORIZED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "UNAUTHORIZED",
+                                  "message": "Full authentication is required to access this resource",
+                                  "path": "/orders/102/reactivate-order"
+                                }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The refresh token has expired.",
+                                  "path": "/orders/102/reactivate-order"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden (different user or no ROLE_USER)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCESS_DENIED",
+                                    value = """
+                                {
+                                  "status": 403,
+                                  "code": "ACCESS_DENIED",
+                                  "message": "You are not authorized to reactivate this order",
+                                  "path": "/orders/102/reactivate-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "Order not found",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ENTITY_NOT_FOUND",
+                                    value = """
+                                {
+                                  "status": 404,
+                                  "code": "ENTITY_NOT_FOUND",
+                                  "message": "Order with ID 1073741824 not found",
+                                  "path": "/orders/1073741824/reactivate-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "423", description = "Account locked/deactivated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    value = """
+                                {
+                                  "status": 423,
+                                  "code": "ACCOUNT_LOCKED",
+                                  "message": "Your account is deactivated. Would you like to restore it?",
+                                  "path": "/orders/102/reactivate-order"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    value = """
+                                {
+                                  "status": 500,
+                                  "code": "INTERNAL_ERROR",
+                                  "message": "Internal server error",
+                                  "path": "/orders/102/reactivate-order"
+                                }"""
+                            )
+                    )
+            )
+    })
     @SecurityRequirement(name = "bearerAuth")
-    @RequestMapping(value = "/{id}/reactivate-order", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @PatchMapping("/{id}/reactivate-order")
     public ResponseEntity<OrderResponseDTO> reactivateOrder(@PathVariable("id") int orderId) {
         OrderResponseDTO response = orderService.reactivateOrder(orderId);
         return ResponseEntity.ok(response);

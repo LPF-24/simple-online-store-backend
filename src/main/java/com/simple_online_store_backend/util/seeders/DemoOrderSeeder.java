@@ -45,6 +45,9 @@ class DemoOrderSeeder implements CommandLineRunner {
 
         int id3 = createOrder(user, OrderStatus.SHIPPED);      // /orders/{id}/cancel-order → 400
         log.info("[DEMO] Seeded SHIPPED order id={} for {}", id3, user.getEmail());
+
+        int id4 = createOrder(user, OrderStatus.CANCELLED);      // /orders/{id}/reactivate-order → 200
+        log.info("[DEMO] Seeded CANCELLED order id={} for {}", id4, user.getEmail());
     }
 
     private int createOrder(Person owner, OrderStatus status) {
