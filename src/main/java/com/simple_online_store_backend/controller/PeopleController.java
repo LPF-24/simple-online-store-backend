@@ -6,6 +6,7 @@ import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -423,15 +424,108 @@ public class PeopleController {
     }
 
     @Operation(
-            summary = "Get current user profile",
-            description = "Returns information about the authenticated user's account"
+            summary = "Get current user's profile",
+            description = """
+            Returns the profile information of the currently authenticated user.
+
+            ### How to test in Swagger UI
+
+            **200 OK (success):**
+            1. `POST /auth/login` as a user with `ROLE_USER` or `ROLE_ADMIN`.
+            2. Copy the received access token → click **Authorize** → paste `Bearer <token>`.
+            3. Call `GET /people/profile`.
+            4. You’ll receive a JSON with the user’s profile (id, username, email, role, etc.).
+
+            **401 UNAUTHORIZED:**
+            - No access token provided (unauthenticated request).
+            - Expired or malformed access token.
+
+            **403 FORBIDDEN:**
+            - Authenticated but does not have the proper authority (should not normally occur if configuration is `.authenticated()`).
+
+            **404 NOT FOUND:**
+            - The user from the JWT no longer exists in the database (was deleted manually or missing).
+
+            **423 ACCOUNT_LOCKED:**
+            - The account is deactivated (`deleted=true`).
+            - To restore it, use `PATCH /people/restore-account`.
+
+            **Notes:**
+            - Requires a valid JWT token (bearerAuth).
+            - Accessible to both `ROLE_USER` and `ROLE_ADMIN`.
+            """
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Profile retrieved successfully"),
-            @ApiResponse(responseCode = "401", description = "User is not authenticated")
+            @ApiResponse(responseCode = "200", description = "Current user's profile",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = PersonResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    summary = "Successful profile retrieval",
+                                    value = """
+                                        {
+                                          "id": 12,
+                                          "userName": "alice",
+                                          "email": "alice@test.io",
+                                          "role": "ROLE_USER",
+                                          "birthDate": "1990-01-01",
+                                          "phoneNumber": "+49-111"
+                                        }
+                                        """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized (missing/invalid/expired token)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "UNAUTHORIZED", summary = "No token provided", value = """
+                                        {
+                                          "status": 401,
+                                          "code": "UNAUTHORIZED",
+                                          "message": "Authentication is required to access this resource",
+                                          "path": "/people/profile"
+                                        }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", summary = "Expired access token", value = """
+                                        {
+                                          "status": 401,
+                                          "code": "TOKEN_EXPIRED",
+                                          "message": "The access token has expired",
+                                          "path": "/people/profile"
+                                        }""")
+                            })
+            ),
+            @ApiResponse(responseCode = "423", description = "Account locked/deactivated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "ACCOUNT_LOCKED", summary = "Soft-deleted account", value = """
+                                {
+                                  "status": 423,
+                                  "code": "ACCOUNT_LOCKED",
+                                  "message": "Your account is deactivated. Would you like to restore it?",
+                                  "path": "/people/profile"
+                                }""")
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "INTERNAL_ERROR", summary = "Unhandled exception", value = """
+                                {
+                                  "status": 500,
+                                  "code": "INTERNAL_ERROR",
+                                  "message": "Internal server error",
+                                  "path": "/people/profile"
+                                }""")
+                    )
+            )
     })
     @SecurityRequirement(name = "bearerAuth")
-    @GetMapping("/{id}/profile")
+    @GetMapping("/profile")
     public ResponseEntity<PersonResponseDTO> getProfile() {
         PersonResponseDTO response = peopleService.getCurrentUserInfo();
         return ResponseEntity.ok(response);

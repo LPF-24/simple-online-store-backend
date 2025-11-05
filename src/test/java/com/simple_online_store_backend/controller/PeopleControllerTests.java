@@ -1,23 +1,30 @@
 package com.simple_online_store_backend.controller;
 
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.simple_online_store_backend.enums.OrderStatus;
 import com.simple_online_store_backend.repository.OrderRepository;
 import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.repository.PeopleRepository;
 import com.simple_online_store_backend.entity.Person;
+import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
@@ -42,6 +49,9 @@ public class PeopleControllerTests {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @MockitoBean
+    private JWTUtil jwtUtil;
 
     @BeforeEach
     void cleanDB() {
@@ -158,15 +168,15 @@ public class PeopleControllerTests {
             Person user = savePerson("alice", "alice@test.io", "ROLE_USER",
                     LocalDate.of(1990,1,1), "+49-111", true, rawPassword);
 
-            mockMvc.perform(post("/people/restore-account")
+            mockMvc.perform(patch("/people/restore-account")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .accept(MediaType.TEXT_PLAIN) // можно и убрать
+                            .accept(MediaType.APPLICATION_JSON) // было TEXT_PLAIN
                             .content("""
-                        {"username":"%s","password":"%s"}
-                    """.formatted(username, rawPassword)))        // ← ОБЯЗАТЕЛЬНО передаём тело
+            {"username":"%s","password":"%s"}
+        """.formatted(username, rawPassword)))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string(containsString("Account successfully restored")));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)) // было TEXT_PLAIN
+                    .andExpect(content().string("Account successfully restored")); // или containsString(...)
 
             var refreshed = peopleRepository.findById(user.getId()).orElseThrow();
             assertFalse(refreshed.getDeleted(), "User must be unlocked (deleted=false) after restore");
@@ -206,6 +216,68 @@ public class PeopleControllerTests {
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                     .andExpect(jsonPath("$.path").value("/people/restore-account"));
+        }
+    }
+
+    @Nested
+    class methodGetProfile {
+
+        @Test
+        @DisplayName("profile: 200 OK — returns the current authenticated user's profile")
+        void getProfile_ok_returnsCurrentUser() throws Exception {
+            Person alice = savePerson("alice", "alice@test.io", "ROLE_USER",
+                    LocalDate.of(1990,1,1), "+49-111", false, "Secret123!");
+            // второй пользователь просто для контекста
+            savePerson("bob", "bob@test.io", "ROLE_USER",
+                    LocalDate.of(1992,2,2), "+49-222", false, "Secret123!");
+
+            UserDetails principal = new PersonDetails(alice);
+
+            mockMvc.perform(get("/people/profile")
+                            .with(user(principal))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(alice.getId()))
+                    .andExpect(jsonPath("$.userName").value("alice"))
+                    .andExpect(jsonPath("$.email").value("alice@test.io"))
+                    .andExpect(jsonPath("$.role").value("ROLE_USER"))
+                    .andExpect(jsonPath("$.password").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("profile: 401 UNAUTHORIZED — unauthenticated request")
+        void getProfile_unauthenticated_401() throws Exception {
+            mockMvc.perform(get("/people/profile"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("profile: 423 ACCOUNT_LOCKED — deactivated user with valid access token")
+        void getProfile_locked_423() throws Exception {
+            // given: в БД есть заблокированный пользователь
+            String username = "alice";
+            savePerson(username, "alice@test.io", "ROLE_USER",
+                    LocalDate.of(1990,1,1), "+49-111", /*deleted=*/ true, "Secret123!");
+
+            // и валидный access token, который фильтр примет как принадлежащий alice
+            String accessToken = "ACCESS.ALICE";
+            DecodedJWT decoded = mock(DecodedJWT.class);
+            Claim usernameClaim = mock(Claim.class);
+            when(usernameClaim.asString()).thenReturn(username);
+            when(decoded.getClaim("username")).thenReturn(usernameClaim);
+            when(jwtUtil.validateToken(accessToken)).thenReturn(decoded);
+
+            // when/then: запрос идёт через JWTFilter → аккаунт помечен deleted=true → 423
+            mockMvc.perform(get("/people/profile")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isLocked()) // 423
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.status").value(423))
+                    .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.path").value("/people/profile"));
         }
     }
 

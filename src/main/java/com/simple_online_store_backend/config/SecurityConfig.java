@@ -93,19 +93,7 @@ public class SecurityConfig {
                         .requestMatchers("/product/add-product", "/product/{id}/update-product",
                                 "/pickup/add-pickup-location", "/pickup/{id}/close-pick-up-location", "/pickup/{id}/open-pick-up-location",
                                 "/pickup/{id}/update-pick-up-location", "/orders").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/people/{id}/profile").access((authentication, request) -> {
-                            String requestUri = request.getRequest().getRequestURI();
-                            String userId = requestUri.replaceAll("\\D+", "");
-
-                            PersonDetails personDetails = (PersonDetails) authentication.get().getPrincipal();
-                            String currentUserId = String.valueOf(personDetails.getId());
-
-                            boolean isOwner = userId.equals(currentUserId);
-                            boolean isAdmin = personDetails.getAuthorities().stream()
-                                    .anyMatch(authentic -> authentic.getAuthority().equals("ROLE_ADMIN"));
-
-                            return new AuthorizationDecision(isOwner || isAdmin);
-                        })
+                        .requestMatchers("/people/profile").authenticated()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )

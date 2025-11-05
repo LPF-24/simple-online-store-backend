@@ -32,6 +32,9 @@ logging:
         security: DEBUG
         orm.jpa: DEBUG
         jdbc.core: DEBUG
+    org.apache.coyote.http11.Http11Processor: OFF
+    org.apache.coyote: WARN
+    org.apache.tomcat: WARN
 
 jwt_secret: SECRET
 
