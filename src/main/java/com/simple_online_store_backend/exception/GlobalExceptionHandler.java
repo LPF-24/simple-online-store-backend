@@ -56,6 +56,13 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", ex.getMessage(), req.getRequestURI());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIllegalState(
+            IllegalStateException ex, HttpServletRequest req) {
+        return error(HttpStatus.CONFLICT, "ACCOUNT_ALREADY_ACTIVE",
+                ex.getMessage(), req.getRequestURI());
+    }
+
     // 423 — аккаунт заблокирован/деактивирован
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ErrorResponseDTO> handleLocked(Exception ex, HttpServletRequest req) {

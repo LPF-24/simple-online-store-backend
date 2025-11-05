@@ -12,19 +12,19 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -39,6 +39,9 @@ public class PeopleControllerTests {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanDB() {
@@ -145,6 +148,67 @@ public class PeopleControllerTests {
         }
     }
 
+    @Nested
+    class methodRestoreAccount {
+        @Test
+        @DisplayName("restore-account: 200 OK — locked user becomes active")
+        void restoreAccount_success_200() throws Exception {
+            String username = "alice";
+            String rawPassword = "Secret123!";
+            Person user = savePerson("alice", "alice@test.io", "ROLE_USER",
+                    LocalDate.of(1990,1,1), "+49-111", true, rawPassword);
+
+            mockMvc.perform(post("/people/restore-account")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.TEXT_PLAIN) // можно и убрать
+                            .content("""
+                        {"username":"%s","password":"%s"}
+                    """.formatted(username, rawPassword)))        // ← ОБЯЗАТЕЛЬНО передаём тело
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+                    .andExpect(content().string(containsString("Account successfully restored")));
+
+            var refreshed = peopleRepository.findById(user.getId()).orElseThrow();
+            assertFalse(refreshed.getDeleted(), "User must be unlocked (deleted=false) after restore");
+        }
+
+        @Test
+        @DisplayName("restore-account: 401 UNAUTHORIZED — bad password")
+        void restoreAccount_badPassword_401() throws Exception {
+            String username = "bob";
+
+            savePerson(username, "bob@test.io", "ROLE_USER",
+                    LocalDate.of(1990,1,1), "+49-111", true, "RightPass1");
+
+            mockMvc.perform(patch("/people/restore-account")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                        {"username":"%s","password":"WrongPass"}
+                    """.formatted(username)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("BAD_CREDENTIALS"))
+                    .andExpect(jsonPath("$.path").value("/people/restore-account"));
+        }
+
+        @Test
+        @DisplayName("restore-account: 500 INTERNAL_ERROR — account already active")
+        void restoreAccount_alreadyActive_500() throws Exception {
+            // given: пользователь уже активен (deleted=false)
+            String username = "charlie";
+            savePerson(username, "charlie@test.io", "ROLE_USER", LocalDate.of(1985, 3, 3), "+49-333", false, "Test234");
+
+
+            mockMvc.perform(post("/people/restore-account")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                            {"username":"%s","password":"AnyPass9"}
+                        """.formatted(username)))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                    .andExpect(jsonPath("$.path").value("/people/restore-account"));
+        }
+    }
+
     private Order saveOrder(Person person, OrderStatus status) {
         Order o = new Order();
         o.setPerson(person);
@@ -152,12 +216,8 @@ public class PeopleControllerTests {
         return orderRepository.save(o); // реальный репозиторий заказов :contentReference[oaicite:6]{index=6}
     }
 
-    private Person savePerson(String userName,
-                              String email,
-                              String role,
-                              LocalDate dob,
-                              String phone,
-                              boolean deleted,
+    private Person savePerson(String userName, String email, String role,
+                              LocalDate dob, String phone, boolean deleted,
                               String rawPassword) {
         Person p = new Person();
         p.setUserName(userName);
@@ -166,8 +226,7 @@ public class PeopleControllerTests {
         p.setDateOfBirth(dob);
         p.setPhoneNumber(phone);
         p.setDeleted(deleted);
-        // В сущности пароль NOT NULL — сохраняем простой тестовый пароль
-        p.setPassword(rawPassword == null ? "test-password" : rawPassword);
+        p.setPassword(passwordEncoder.encode(rawPassword)); // ← важно
         return peopleRepository.save(p);
     }
 }

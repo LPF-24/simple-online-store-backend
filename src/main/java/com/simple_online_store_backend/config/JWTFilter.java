@@ -43,6 +43,7 @@ public class JWTFilter extends OncePerRequestFilter {
             "/auth/dev/**",
             "/auth/logout-dev/**",
             "/auth/refresh-dev/**",
+            "/people/restore-account",
             "/swagger-ui/**",
             "/v3/api-docs/**"
     );

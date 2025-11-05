@@ -265,13 +265,158 @@ public class PeopleController {
 
     @Operation(
             summary = "Restore deactivated account",
-            description = "Restores a deactivated account using username and password"
+            description = """
+        Restores a previously deactivated user account (soft delete).
+
+        The endpoint is **public (permitAll)** and does not require an access token.
+        Provide your **username** and **password** in the request body. On success, the
+        account flag `deleted=false` is set and access is restored.
+
+        ### How to test in Swagger UI
+
+        **200 OK (success):**
+        - `PATCH /people/restore-account` with body:
+          ```json
+          { "username": "user", "password": "user123!" }
+          ```
+          Response: `"Account successfully restored"`.
+
+        **Error cases:**
+        - `404 NOT FOUND` — user not found (`ENTITY_NOT_FOUND`). To get a **404**, enter the details of an existing user.
+        - `409 CONFLICT` — account is already active (`ACCOUNT_ALREADY_ACTIVE`).Please make a request **twice** with **valid body for a regular user**.
+        - `400 BAD REQUEST` — malformed JSON body (`MESSAGE_NOT_READABLE`). Select when making a JSON request that **will trigger 400 MESSAGE_NOT_READABLE**
+        """
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Account restored successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid credentials or account is already active")
+            @ApiResponse(responseCode = "200", description = "Account successfully restored",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = "Account successfully restored"
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Malformed request body",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "MESSAGE_NOT_READABLE", value = """
+                        {
+                          "status": 400,
+                          "code": "MESSAGE_NOT_READABLE",
+                          "message": "JSON parse error: ...",
+                          "path": "/people/restore-account"
+                        }""")
+                    )
+            ),
+            /*@ApiResponse(responseCode = "401", description = "Unauthorized / invalid credentials",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "BAD_CREDENTIALS", value = """
+                        {
+                          "status": 401,
+                          "code": "BAD_CREDENTIALS",
+                          "message": "Invalid username or password",
+                          "path": "/people/restore-account"
+                        }""")
+                    )
+            ),*/
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "ENTITY_NOT_FOUND", value = """
+                        {
+                          "status": 404,
+                          "code": "ENTITY_NOT_FOUND",
+                          "message": "User not found",
+                          "path": "/people/restore-account"
+                        }""")
+                    )
+            ),
+            @ApiResponse(responseCode = "409", description = "Account already active",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "ACCOUNT_ALREADY_ACTIVE", value = """
+                        {
+                          "status": 409,
+                          "code": "ACCOUNT_ALREADY_ACTIVE",
+                          "message": "Account is already active",
+                          "path": "/people/restore-account"
+                        }""")
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "INTERNAL_ERROR", value = """
+                        {
+                          "status": 500,
+                          "code": "INTERNAL_ERROR",
+                          "message": "Internal server error",
+                          "path": "/people/restore-account"
+                        }""")
+                    )
+            )
     })
-    @RequestMapping(value = "/restore-account", method = {RequestMethod.POST, RequestMethod.PATCH})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LoginRequestDTO.class),
+                    examples = {
+                            @ExampleObject(
+                                    name = "ROLE_USER: All required fields present",
+                                    summary = "Valid body for a regular user. When reused will trigger 404 NO_FOUND",
+                                    value = """
+                                      {
+                                        "username": "user",
+                                        "password": "user123!"
+                                      }
+                                      """
+                            ),
+                            /*@ExampleObject(
+                                    name = "ROLE_ADMIN: All required fields present",
+                                    summary = "Valid body for an admin user (also permitted)",
+                                    value = """
+                                      {
+                                        "username": "admin",
+                                        "password": "ChangeMe_123!"
+                                      }
+                                      """
+                            ),*/
+                            @ExampleObject(
+                                    name = "Unauthorized - invalid credentials",
+                                    summary = "Will trigger 404 NO_FOUND",
+                                    value = """
+                                      {
+                                        "username": "usr",
+                                        "password": "wrong"
+                                      }
+                                      """
+                            ),
+                            @ExampleObject(
+                                    name = "Malformed JSON request body",
+                                    summary = "Will trigger 400 MESSAGE_NOT_READABLE",
+                                    value = """
+                                      {
+                                        username: user,
+                                        "password": 12345
+                                      }
+                                      """
+                            )
+                    }
+            )
+    )
+    @PatchMapping(
+            value = "/restore-account",
+            consumes = "application/json",
+            produces = "application/json"
+    )
     public ResponseEntity<?> restoreAccount(@RequestBody LoginRequestDTO loginRequest) {
         peopleService.restoreAccount(loginRequest.getUsername(), loginRequest.getPassword());
         return ResponseEntity.ok("Account successfully restored");
