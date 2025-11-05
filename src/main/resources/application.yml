@@ -42,6 +42,7 @@ app:
   cors:
     allowed-origin-patterns: "*"
   security:
+    admin-activation-code: work2025admin
     jwt:
       expiration: PT1H
   admin:

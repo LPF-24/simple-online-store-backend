@@ -29,14 +29,16 @@ public class PeopleService {
     private final PersonConverter personConverter;
     private final PasswordEncoder passwordEncoder;
     private final OrderRepository orderRepository;
+    private final RefreshTokenService refreshTokenService;
     @Value("${admin.registration.code}")
     private String adminCodeFromYml;
 
-    public PeopleService(PeopleRepository peopleRepository, PersonConverter personConverter, PasswordEncoder passwordEncoder, OrderRepository orderRepository) {
+    public PeopleService(PeopleRepository peopleRepository, PersonConverter personConverter, PasswordEncoder passwordEncoder, OrderRepository orderRepository, RefreshTokenService refreshTokenService) {
         this.peopleRepository = peopleRepository;
         this.personConverter = personConverter;
         this.passwordEncoder = passwordEncoder;
         this.orderRepository = orderRepository;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -121,5 +123,25 @@ public class PeopleService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         return personConverter.convertToResponseDTO(person);
+    }
+
+    @Transactional
+    public void promotePerson(Integer personId) {
+        Person person = peopleRepository.findById(personId)
+                .orElseThrow(() -> new EntityNotFoundException("Customer with this id " + personId + " can't be found"));
+
+        person.setRole("ROLE_ADMIN");
+        peopleRepository.save(person);
+    }
+
+    @Transactional
+    public void demoteToUserByUsername(String username) {
+        Person p = peopleRepository.findByUserName(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if ("ROLE_USER".equals(p.getRole())) return;
+        p.setRole("ROLE_USER");
+        peopleRepository.save(p);
+        refreshTokenService.deleteRefreshToken(username);
     }
 }

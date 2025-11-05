@@ -89,7 +89,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/logout-dev/**", "/auth/refresh-dev/**", "/auth/dev/**").permitAll()
                         .requestMatchers("/address/add-address", "/address/update-address",
                                 "/people/deactivate-account", "/orders/create-order", "/orders/all-my-orders", "/orders/{id}/cancel-order",
-                                "/orders/{id}/reactivate-order", "/address/delete-address").hasAuthority("ROLE_USER")
+                                "/orders/{id}/reactivate-order", "/address/delete-address", "/people/promote").hasAuthority("ROLE_USER")
                         .requestMatchers("/product/add-product", "/product/{id}/update-product",
                                 "/pickup/add-pickup-location", "/pickup/{id}/close-pick-up-location", "/pickup/{id}/open-pick-up-location",
                                 "/pickup/{id}/update-pick-up-location", "/orders").hasAuthority("ROLE_ADMIN")

@@ -1,8 +1,11 @@
 package com.simple_online_store_backend.controller;
 
+import com.simple_online_store_backend.dto.code.CodeRequestDTO;
 import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
+import com.simple_online_store_backend.exception.ErrorUtil;
+import com.simple_online_store_backend.exception.ValidationException;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,14 +18,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "People", description = "Account management and user profile operations")
 @RestController
@@ -529,6 +535,200 @@ public class PeopleController {
     public ResponseEntity<PersonResponseDTO> getProfile() {
         PersonResponseDTO response = peopleService.getCurrentUserInfo();
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Promote current user to administrator",
+            description = """
+        Promotes the currently authenticated **ROLE_USER** to **ROLE_ADMIN** 
+        when the correct activation code is provided in the request body.
+        
+        ### Business rules
+        - Only authenticated users (`ROLE_USER`) can call this endpoint.
+        - The activation code must match the configured value of 
+          `app.security.admin-activation-code` (environment or application property).
+        - Upon success, the user's role is updated to `ROLE_ADMIN`.
+        - After promotion, the user must re-login to apply new privileges.
+        
+        ### How to test in Swagger UI
+        **200 OK (success):**
+        1) Login as a regular user (`ROLE_USER`) and authorize in Swagger (`Bearer <token>`).
+        2) `PATCH /people/promote`
+        3) Provide body:
+           ```json
+           { "code": "work2025admin" }
+           ```
+        4) Response:
+           ```json
+           { "message": "You have been successfully promoted to administrator. Please log in again, colleague." }
+           ```
+        5) Important! Please remember to **demote** user back to **ROLE_USER** after successfully `PATCH /people/promote`. To do this, use `PATCH /auth/dev/_demote` 
+        
+        **400 VALIDATION_ERROR:**
+        - The `code` field is missing or incorrect.
+        
+        **401 UNAUTHORIZED:**
+        - No or invalid access token provided.
+        
+        **403 FORBIDDEN:**
+        - Authenticated user already has the `ROLE_ADMIN` (promotion unnecessary),
+          or the token belongs to a locked account.
+        
+        **423 ACCOUNT_LOCKED:**
+        - User account is deactivated (deleted=true).
+        - To do this, make sure the user has **ROLE_USER** and use `PATCH /auth/dev/_lock`
+        - Then don't forget to use `PATCH /auth/dev/_unlock` to unlock the user
+        
+        **Notes:**
+        - Requires a valid JWT bearer token.
+        - Accessible only to `ROLE_USER`.
+        - Uses PATCH method (idempotent within context: promotion can succeed only once).
+        """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Promotion successful",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "Promotion success",
+                                    summary = "User promoted to administrator",
+                                    value = """
+                                        {
+                                          "message": "You have been successfully promoted to administrator. Please log in again, colleague."
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "400", description = "Invalid or missing activation code",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "VALIDATION_ERROR",
+                                    summary = "Incorrect code format or value",
+                                    value = """
+                                        {
+                                          "status": 400,
+                                          "code": "VALIDATION_ERROR",
+                                          "message": "code - Invalid code!;",
+                                          "path": "/people/promote"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized (no/invalid/expired token)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "UNAUTHORIZED",
+                                            summary = "No token provided",
+                                            value = """
+                                                {
+                                                  "status": 401,
+                                                  "code": "UNAUTHORIZED",
+                                                  "message": "Authentication is required to access this resource",
+                                                  "path": "/people/promote"
+                                                }
+                                                """
+                                    ),
+                                    @ExampleObject(
+                                            name = "TOKEN_EXPIRED",
+                                            summary = "Expired access token",
+                                            value = """
+                                                {
+                                                  "status": 401,
+                                                  "code": "TOKEN_EXPIRED",
+                                                  "message": "The access token has expired",
+                                                  "path": "/people/promote"
+                                                }
+                                                """
+                                    )
+                            })),
+            @ApiResponse(responseCode = "403", description = "Forbidden (user already has ROLE_ADMIN or lacks access)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCESS_DENIED",
+                                    summary = "Admin role already granted or access blocked",
+                                    value = """
+                                        {
+                                          "status": 403,
+                                          "code": "ACCESS_DENIED",
+                                          "message": "Access is denied",
+                                          "path": "/people/promote"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException from security filter",
+                                    value = """
+                                        {
+                                          "status": 423,
+                                          "code": "ACCOUNT_LOCKED",
+                                          "message": "Your account is deactivated. Would you like to restore it?",
+                                          "path": "/people/promote"
+                                        }
+                                        """
+                            ))),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    summary = "Unexpected exception",
+                                    value = """
+                                        {
+                                          "status": 500,
+                                          "code": "INTERNAL_ERROR",
+                                          "message": "Internal server error",
+                                          "path": "/people/promote"
+                                        }
+                                        """
+                            )))
+    })
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = {
+                            @ExampleObject(
+                                    name = "Valid request",
+                                    summary = "Correct activation code",
+                                    value = """
+                                        { "code": "work2025admin" }
+                                        """
+                            ),
+                            @ExampleObject(
+                                    name = "Invalid code",
+                                    summary = "Wrong activation code",
+                                    value = """
+                                        { "code": "WRONG-CODE" }
+                                        """
+                            ),
+                            @ExampleObject(
+                                    name = "Missing code",
+                                    summary = "No code field provided",
+                                    value = """
+                                        { }
+                                        """
+                            )
+                    }
+            )
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @PatchMapping("/promote")
+    public ResponseEntity<?> promote(@RequestBody @Valid CodeRequestDTO code, BindingResult bindingResult) {
+        if (bindingResult.hasErrors())
+            ErrorUtil.returnErrorsToClient(bindingResult);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        PersonDetails personDetails = (PersonDetails) authentication.getPrincipal();
+
+        logger.debug("Middle of the method");
+        peopleService.promotePerson(personDetails.getId());
+        logger.info("Promotion was successful");
+        return ResponseEntity.ok(Map.of("message", "You have been successfully promoted to administrator. Please log in again, colleague."));
     }
 }
 

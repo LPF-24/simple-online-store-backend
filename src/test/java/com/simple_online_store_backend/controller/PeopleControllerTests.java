@@ -9,12 +9,15 @@ import com.simple_online_store_backend.repository.PeopleRepository;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.security.JWTUtil;
 import com.simple_online_store_backend.security.PersonDetails;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -278,6 +281,82 @@ public class PeopleControllerTests {
                     .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.path").value("/people/profile"));
+        }
+    }
+
+    @Nested
+    class methodPromoteTests {
+        // ВАРИАНТ 1 (проще): если можно – добавьте на ВЕСЬ класс PeopleControllerTests:
+// @TestPropertySource(properties = "admin.registration.code=MASTER-CODE")
+
+// ВАРИАНТ 2: если нельзя менять аннотации класса – добавьте внутрь PeopleControllerTests:
+/*
+@DynamicPropertySource
+static void registerProps(DynamicPropertyRegistry registry) {
+    registry.add("admin.registration.code", () -> "MASTER-CODE");
+}
+*/
+
+        @Nested
+        class methodPromote {
+
+            @Test
+            @DisplayName("promote: 200 OK — ROLE_USER повышается до ROLE_ADMIN, тело содержит message")
+            void promote_success_200_updatesRole_andReturnsMessage() throws Exception {
+                Person alice = savePerson("alice", "alice@test.io", "ROLE_USER",
+                        LocalDate.of(1990,1,1), "+49-111", false, "Secret123!");
+
+                UserDetails principal = new PersonDetails(alice);
+
+                mockMvc.perform(patch("/people/promote")
+                                .with(user(principal))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .accept(MediaType.APPLICATION_JSON)
+                                .content("""
+                            {"code":"work2025admin"}
+                        """))
+                        .andExpect(status().isOk())
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                        .andExpect(jsonPath("$.message")
+                                .value("You have been successfully promoted to administrator. Please log in again, colleague."));
+
+                // verify: роль обновлена в БД
+                Person refreshed = peopleRepository.findById(alice.getId()).orElseThrow();
+                org.assertj.core.api.Assertions.assertThat(refreshed.getRole()).isEqualTo("ROLE_ADMIN");
+            }
+
+            @Test
+            @DisplayName("promote: 401 UNAUTHORIZED — запрос без аутентификации")
+            void promote_unauthenticated_401() throws Exception {
+                mockMvc.perform(patch("/people/promote")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {"code":"MASTER-CODE"}
+                                        """))
+                        .andExpect(status().isUnauthorized());
+            }
+
+            @Test
+            @DisplayName("promote: 400 BAD REQUEST — валидация кода не пройдена (пустая строка)")
+            void promote_validationError_400_whenCodeInvalid() throws Exception {
+                // given
+                Person bob = savePerson("bob", "bob@test.io", "ROLE_USER",
+                        LocalDate.of(1992,2,2), "+49-222", false, "Secret123!");
+                UserDetails principal = new PersonDetails(bob);
+
+                mockMvc.perform(patch("/people/promote")
+                                .with(user(principal))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .accept(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {"code":""}
+                                        """))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                        .andExpect(jsonPath("$.status").value(400))
+                        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                        .andExpect(jsonPath("$.path").value("/people/promote"));
+            }
         }
     }
 
