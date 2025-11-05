@@ -155,14 +155,103 @@ public class PeopleController {
 
     @Operation(
             summary = "Deactivate user account",
-            description = "Deactivates the current user's account (soft delete)"
+            description = """
+        Deactivates the **currently authenticated user's** account (soft delete).
+
+        This action marks the user as `deleted=true` and cancels all active orders
+        (`PENDING`, `PROCESSING`) by setting their status to `CANCELLED`.
+
+        The operation requires a valid **access token** in the `Authorization` header.
+
+        ### How to test in Swagger UI
+
+        **200 OK (success):**
+        1. `POST /auth/login` as a regular user (`ROLE_USER`) and copy the access token.  
+        2. Click **Authorize** → `Bearer <token>`.  
+        3. `PATCH /people/deactivate-account` → returns `"Account has been deactivated."`.
+
+        **401 UNAUTHORIZED:**
+        - Missing `Authorization` header.  
+        - Invalid or expired access token.  
+        - User not logged in.
+
+        **403 FORBIDDEN:**
+        - Authenticated but without `ROLE_USER` (e.g. `ROLE_ADMIN`) → `403`.
+        
+        **Notes:**
+        - The endpoint works only for authenticated users.
+        - After deactivation, the user’s account becomes locked (`deleted=true`).
+        - To restore the account, use `POST /people/restore-account`.
+        """
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Account deactivated successfully"),
-            @ApiResponse(responseCode = "401", description = "User is not authenticated")
+            @ApiResponse(responseCode = "200", description = "Account deactivated successfully",
+                    content = @Content(
+                            mediaType = "text/plain",
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = "Account has been deactivated."
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "MISSING_AUTH_HEADER", value = """
+                                {
+                                  "status": 401,
+                                  "code": "MISSING_AUTH_HEADER",
+                                  "message": "Missing or invalid Authorization header",
+                                  "path": "/people/deactivate-account"
+                                }"""),
+                                    @ExampleObject(name = "INVALID_ACCESS_TOKEN", value = """
+                                {
+                                  "status": 401,
+                                  "code": "INVALID_ACCESS_TOKEN",
+                                  "message": "Invalid access token",
+                                  "path": "/people/deactivate-account"
+                                }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The access token has expired",
+                                  "path": "/people/deactivate-account"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "ACCESS_DENIED", value = """
+                            {
+                              "status": 403,
+                              "code": "ACCESS_DENIED",
+                              "message": "Access is denied",
+                              "path": "/people/deactivate-account"
+                            }""")
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "INTERNAL_ERROR", value = """
+                        {
+                          "status": 500,
+                          "code": "INTERNAL_ERROR",
+                          "message": "Internal server error",
+                          "path": "/people/deactivate-account"
+                        }""")
+                    )
+            )
     })
     @SecurityRequirement(name = "bearerAuth")
-    @RequestMapping(value = "/deactivate-account", method = {RequestMethod.POST, RequestMethod.PATCH})
+    @PatchMapping("/deactivate-account")
     public ResponseEntity<String> deactivateAccount() {
         logger.info("Method deactivateAccount started");
 
