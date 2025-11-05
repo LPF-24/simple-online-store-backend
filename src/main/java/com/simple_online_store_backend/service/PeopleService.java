@@ -50,6 +50,7 @@ public class PeopleService {
         return personConverter.convertToResponseDTO(peopleRepository.saveAndFlush(person));
     }
 
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public List<PersonResponseDTO> getAllConsumers() {
         return peopleRepository.findAllByRole("ROLE_USER").stream().map(personConverter::convertToResponseDTO).toList();
     }

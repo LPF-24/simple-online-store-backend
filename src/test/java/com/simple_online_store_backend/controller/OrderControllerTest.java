@@ -1,7 +1,6 @@
 package com.simple_online_store_backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.simple_online_store_backend.dto.order.OrderRequestDTO;
 import com.simple_online_store_backend.entity.Address;
 import com.simple_online_store_backend.entity.Order;
 import com.simple_online_store_backend.entity.Person;
@@ -128,6 +127,7 @@ class OrderControllerTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED")
@@ -244,6 +244,7 @@ class OrderControllerTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED")
@@ -485,6 +486,7 @@ class OrderControllerTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED"))));
@@ -664,6 +666,7 @@ class OrderControllerTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED")
@@ -763,6 +766,7 @@ class OrderControllerTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED")
@@ -861,6 +865,7 @@ class OrderControllerTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED")

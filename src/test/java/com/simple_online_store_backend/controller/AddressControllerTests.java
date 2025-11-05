@@ -514,6 +514,7 @@ class AddressControllerTests {
             mvc.perform(delete("/address/delete-address"))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
                             equalTo("INVALID_ACCESS_TOKEN"),      // если у тебя EntryPoint всегда "INVALID_ACCESS_TOKEN"
                             equalTo("TOKEN_EXPIRED")
