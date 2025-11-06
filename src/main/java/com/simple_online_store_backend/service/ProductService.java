@@ -3,6 +3,7 @@ package com.simple_online_store_backend.service;
 import com.simple_online_store_backend.dto.product.ProductRequestDTO;
 import com.simple_online_store_backend.dto.product.ProductResponseDTO;
 import com.simple_online_store_backend.entity.Product;
+import com.simple_online_store_backend.exception.ValidationException;
 import com.simple_online_store_backend.mapper.ProductMapper;
 import com.simple_online_store_backend.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -35,6 +36,9 @@ public class ProductService {
     @Transactional
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ProductResponseDTO addProduct(ProductRequestDTO dto) {
+        if (productRepository.existsByProductNameIgnoreCase(dto.getProductName())) {
+            throw new ValidationException("Product with name '" + dto.getProductName() + "' already exists");
+        }
         Product productToAdd = productMapper.mapRequestDTOToProduct(dto);
         productRepository.save(productToAdd);
         return productMapper.mapProductToResponseDTO(productToAdd);

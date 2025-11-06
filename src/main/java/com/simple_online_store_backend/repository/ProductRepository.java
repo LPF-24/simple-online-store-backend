@@ -8,4 +8,5 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<Product, Integer> {
     List<Product> findAllByAvailabilityTrue();
     List<Product> findByProductName(String name);
+    boolean existsByProductNameIgnoreCase(String productName);
 }

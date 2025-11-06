@@ -5,7 +5,9 @@ import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -144,6 +146,19 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", msg, req.getRequestURI());
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest req) {
+        String msg = "Duplicate product name";
+        return error(HttpStatus.CONFLICT, "DUPLICATE_PRODUCT_NAME", msg, req.getRequestURI());
+    }
+
+    @ExceptionHandler(jakarta.persistence.PersistenceException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePersistence(
+            PersistenceException ex, HttpServletRequest req) {
+        String msg = Optional.ofNullable(ex.getCause()).map(Throwable::getMessage).orElse("Data integrity violation");
+        return error(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", msg, req.getRequestURI());
+    }
 
     private ResponseEntity<ErrorResponseDTO> error(HttpStatus status, String code, String message, String path) {
         ErrorResponseDTO dto = new ErrorResponseDTO();
