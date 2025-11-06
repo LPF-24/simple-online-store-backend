@@ -524,5 +524,143 @@ class PickupLocationControllerTest {
             }
         }
     }
+
+    @Nested
+    class methodUpdatePickupLocation {
+
+        // ============ 200 OK (PATCH): ADMIN обновляет существующую точку ============
+        @Test
+        void update_admin_patch_returns200_andPersists() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var location = saveLocation("Berlin", "Main", "1A", true);
+
+            mvc.perform(patch("/pickup/" + location.getId() + "/update-pick-up-location")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Munich", "Kaufingerstr.", "12"))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(location.getId()))
+                    .andExpect(jsonPath("$.city").value("Munich"))
+                    .andExpect(jsonPath("$.street").value("Kaufingerstr."))
+                    .andExpect(jsonPath("$.houseNumber").value("12"));
+
+            var updated = pickupLocationRepository.findById(location.getId()).orElseThrow();
+            Assertions.assertEquals("Munich", updated.getCity());
+            Assertions.assertEquals("Kaufingerstr.", updated.getStreet());
+            Assertions.assertEquals("12", updated.getHouseNumber());
+        }
+        // ============ 400 BAD_REQUEST: валидация DTO ==========
+        @Test
+        void update_invalidBody_returns400() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var location = saveLocation("Berlin", "Main", "1A", true);
+
+            mvc.perform(patch("/pickup/" + location.getId() + "/update-pick-up-location")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("", "", ""))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("VALIDATION_ERROR"), equalTo("BAD_REQUEST"))))
+                    .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/update-pick-up-location"));
+        }
+
+        // ============ 403 FORBIDDEN: USER не имеет прав ==========
+        @Test
+        void update_user_forbidden_returns403_andNotChanged() throws Exception {
+            var user = saveUser("maria", "maria@example.com", "ROLE_USER");
+            var token = auth(user);
+            var location = saveLocation("Berlin", "Main", "1A", true);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                mvc.perform(patch("/pickup/" + location.getId() + "/update-pick-up-location")
+                                .with(authentication(token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body("Munich", "Kaufingerstr.", "12"))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isForbidden())
+                        .andExpect(jsonPath("$.status").value(403))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                        .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/update-pick-up-location"));
+
+                var same = pickupLocationRepository.findById(location.getId()).orElseThrow();
+                Assertions.assertEquals("Berlin", same.getCity());
+                Assertions.assertEquals("Main", same.getStreet());
+                Assertions.assertEquals("1A", same.getHouseNumber());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        // ============ 401 UNAUTHORIZED: без токена ==========
+        @Test
+        void update_unauthorized_returns401() throws Exception {
+            var location = saveLocation("Berlin", "Main", "1A", true);
+
+            mvc.perform(patch("/pickup/" + location.getId() + "/update-pick-up-location")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Munich", "Kaufingerstr.", "12"))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED")
+                    )))
+                    .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/update-pick-up-location"));
+        }
+
+        // ============ 404 NOT FOUND: несуществующий id ==========
+        @Test
+        void update_notFound_returns404() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            int missingId = 999_999;
+
+            mvc.perform(patch("/pickup/" + missingId + "/update-pick-up-location")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Munich", "Kaufingerstr.", "12"))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code").value("ENTITY_NOT_FOUND"))
+                    .andExpect(jsonPath("$.message", containsString("doesn't exist")))
+                    .andExpect(jsonPath("$.path").value("/pickup/" + missingId + "/update-pick-up-location"));
+        }
+
+        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ==========
+        @Test
+        void update_serviceThrows_returns500() throws Exception {
+            var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
+            var token = auth(admin);
+            var location = saveLocation("Berlin", "Main", "1A", true);
+
+            // Метод под @PreAuthorize → положим auth заранее в SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                doThrow(new RuntimeException("DB down"))
+                        .when(pickupLocationService)
+                        .updatePickupLocation(any(PickupLocationRequestDTO.class), anyInt());
+
+                mvc.perform(patch("/pickup/" + location.getId() + "/update-pick-up-location")
+                                .with(authentication(token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body("Munich", "Kaufingerstr.", "12"))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                        .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/update-pick-up-location"));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+    }
 }
 

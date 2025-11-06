@@ -13,6 +13,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -133,6 +134,16 @@ public class GlobalExceptionHandler {
             HttpServletRequest req) {
         return error(HttpStatus.NOT_FOUND, "ENTITY_NOT_FOUND", ex.getMessage(), req.getRequestURI());
     }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpServletRequest req) {
+        String msg = ex.getBindingResult().getAllErrors().stream()
+                .map(err -> err.getDefaultMessage())
+                .collect(java.util.stream.Collectors.joining("; "));
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", msg, req.getRequestURI());
+    }
+
 
     private ResponseEntity<ErrorResponseDTO> error(HttpStatus status, String code, String message, String path) {
         ErrorResponseDTO dto = new ErrorResponseDTO();
