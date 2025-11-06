@@ -1,4 +1,4 @@
-package com.simple_online_store_backend.bootstrap;
+package com.simple_online_store_backend.util.seeders;
 
 import com.simple_online_store_backend.entity.PickupLocation;
 import com.simple_online_store_backend.repository.PickupLocationRepository;
