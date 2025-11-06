@@ -151,12 +151,145 @@ public class PickupLocationController {
         return ResponseEntity.ok(service.getAllPickupLocations(role));
     }
 
-    @Operation(summary = "Add new pick-up location", description = "Allows admin to add a pick-up point")
+    @Operation(
+            summary = "Add a new pickup location (admin-only)",
+            description = """
+    Creates a new pickup location.
+
+    **Access:** Only users with `ROLE_ADMIN`.
+
+    ### How to test in Swagger UI
+
+    **200 OK (created by ADMIN):**
+    1. `POST /auth/login` as a user with `ROLE_ADMIN` → copy `token`.
+    2. Click **Authorize** → `Bearer <token>`.
+    3. `POST /pickup/add-pickup-location` with a valid JSON body (see examples below).
+
+    **401 UNAUTHORIZED:**
+    - No token / malformed token / expired token → `401` (see response schema below).
+
+    **403 FORBIDDEN:**
+    - Logged in as non-admin (e.g., `ROLE_USER`) → `403`.
+
+    **400 BAD REQUEST:**
+    - Body violates validation rules (e.g., empty or invalid `city/street/houseNumber`) → `400`.
+    - If such a **pick-up location already exists** in the database → `400`
+
+    **500 INTERNAL SERVER ERROR:**
+    - Unexpected server error (e.g., DB failure) → `500`.
+    """
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Pick-up location successfully added"),
-            @ApiResponse(responseCode = "400", description = "Validation failed"),
-            @ApiResponse(responseCode = "403", description = "Only admin can add pick-up locations")
+            @ApiResponse(responseCode = "200", description = "Pickup location created",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = PickupLocationResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                    {
+                                      "id": 101,
+                                      "city": "Berlin",
+                                      "street": "Main",
+                                      "houseNumber": "1A"
+                                    }
+                                    """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Bad request (validation failed)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "VALIDATION_ERROR (empty fields)", value = """
+                            {
+                              "status": 400,
+                              "code": "VALIDATION_ERROR",
+                              "message": "City name can't be empty!; Street name can't be empty!; House number name can't be empty!",
+                              "path": "/pickup/add-pickup-location"
+                            }"""),
+                                    @ExampleObject(name = "MESSAGE_NOT_READABLE (malformed JSON)", value = """
+                            {
+                              "status": 400,
+                              "code": "MESSAGE_NOT_READABLE",
+                              "message": "Cannot deserialize value...",
+                              "path": "/pickup/add-pickup-location"
+                            }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                            {
+                              "status": 401,
+                              "code": "TOKEN_EXPIRED",
+                              "message": "The refresh token has expired.",
+                              "path": "/pickup/add-pickup-location"
+                            }"""),
+                                    @ExampleObject(name = "INVALID_REFRESH_TOKEN", value = """
+                            {
+                              "status": 401,
+                              "code": "INVALID_REFRESH_TOKEN",
+                              "message": "Invalid refresh token",
+                              "path": "/pickup/add-pickup-location"
+                            }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden (admin-only)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "ACCESS_DENIED", value = """
+                        {
+                          "status": 403,
+                          "code": "ACCESS_DENIED",
+                          "message": "Access is denied",
+                          "path": "/pickup/add-pickup-location"
+                        }""")
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "INTERNAL_ERROR", value = """
+                    {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Internal server error",
+                      "path": "/pickup/add-pickup-location"
+                    }""")
+                    )
+            )
     })
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            description = "New pickup location payload",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PickupLocationRequestDTO.class),
+                    examples = {
+                            @ExampleObject(name = "Valid (ADMIN)", value = """
+                            {
+                              "city": "Berlin",
+                              "street": "Main",
+                              "houseNumber": "1A"
+                            }"""),
+                            @ExampleObject(name = "Invalid (violates validation)", value = """
+                            {
+                              "city": "",
+                              "street": "",
+                              "houseNumber": ""
+                            }""")
+                    }
+            )
+    )
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/add-pickup-location")
     public ResponseEntity<PickupLocationResponseDTO> addPickupLocation(@RequestBody @Valid PickupLocationRequestDTO dto,

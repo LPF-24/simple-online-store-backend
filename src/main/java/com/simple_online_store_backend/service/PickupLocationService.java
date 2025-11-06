@@ -3,6 +3,7 @@ package com.simple_online_store_backend.service;
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationRequestDTO;
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationResponseDTO;
 import com.simple_online_store_backend.entity.PickupLocation;
+import com.simple_online_store_backend.exception.ValidationException;
 import com.simple_online_store_backend.mapper.PickupLocationMapper;
 import com.simple_online_store_backend.repository.PickupLocationRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -42,8 +43,21 @@ public class PickupLocationService {
     @Transactional
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public PickupLocationResponseDTO addPickupLocation(PickupLocationRequestDTO dto) {
+        boolean exists = pickupLocationRepository.existsByCityIgnoreCaseAndStreetIgnoreCaseAndHouseNumberIgnoreCase(
+                dto.getCity(), dto.getStreet(), dto.getHouseNumber()
+        );
+
+        if (exists) {
+            throw new ValidationException(
+                    "Pickup location already exists: " +
+                            dto.getCity() + ", " + dto.getStreet() + " " + dto.getHouseNumber()
+            );
+        }
+
         PickupLocation pickupLocation = mapper.mapRequestTOPickupLocation(dto);
+        if (pickupLocation.getActive() == null) pickupLocation.setActive(true);
         pickupLocationRepository.save(pickupLocation);
+
         return mapper.mapPickupLocationRequestToResponseDTO(pickupLocation);
     }
 

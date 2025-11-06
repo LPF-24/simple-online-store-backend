@@ -1,6 +1,7 @@
 package com.simple_online_store_backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.simple_online_store_backend.dto.pickup_location.PickupLocationRequestDTO;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.entity.PickupLocation;
 import com.simple_online_store_backend.repository.PeopleRepository;
@@ -21,10 +22,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -72,6 +75,14 @@ class PickupLocationControllerTest {
         loc.setHouseNumber(house);
         loc.setActive(active);
         return pickupLocationRepository.save(loc);
+    }
+
+    private String body(String city, String street, String house) throws Exception {
+        var dto = new PickupLocationRequestDTO();
+        dto.setCity(city);
+        dto.setStreet(street);
+        dto.setHouseNumber(house);
+        return objectMapper.writeValueAsString(dto);
     }
 
     @Nested
@@ -163,6 +174,120 @@ class PickupLocationControllerTest {
                         .andExpect(jsonPath("$.status").value(500))
                         .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
                         .andExpect(jsonPath("$.path").value("/pickup/all-pickup-location"));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+    }
+
+    @Nested
+    class methodAddPickupLocation {
+
+        // ============ 200 OK: ADMIN создаёт новую точку самовывоза ============
+        @Test
+        void add_admin_valid_returns200_andPersists() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+
+            mvc.perform(post("/pickup/add-pickup-location")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Berlin", "Main", "1A"))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id", notNullValue()))
+                    .andExpect(jsonPath("$.city").value("Berlin"))
+                    .andExpect(jsonPath("$.street").value("Main"))
+                    .andExpect(jsonPath("$.houseNumber").value("1A"));
+
+            // убедимся, что запись реально появилась в БД
+            var all = pickupLocationRepository.findAll();
+            Assertions.assertEquals(1, all.size());
+            PickupLocation saved = all.get(0);
+            Assertions.assertEquals("Berlin", saved.getCity());
+            Assertions.assertEquals("Main", saved.getStreet());
+            Assertions.assertEquals("1A", saved.getHouseNumber());
+        }
+
+        // ============ 403 FORBIDDEN: USER не имеет прав (PreAuthorize в сервисе) ============
+        @Test
+        void add_user_forbidden_returns403() throws Exception {
+            var user = saveUser("maria", "maria@example.com", "ROLE_USER");
+            var token = auth(user);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                mvc.perform(post("/pickup/add-pickup-location")
+                                .with(authentication(auth(user)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body("Berlin", "Main", "1A"))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isForbidden())
+                        .andExpect(jsonPath("$.status").value(403))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                        .andExpect(jsonPath("$.path").value("/pickup/add-pickup-location"));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        // ============ 401 UNAUTHORIZED: без токена ============
+        @Test
+        void add_unauthorized_returns401() throws Exception {
+            mvc.perform(post("/pickup/add-pickup-location")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Berlin", "Main", "1A"))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED")
+                    )))
+                    .andExpect(jsonPath("$.path").value("/pickup/add-pickup-location"));
+        }
+
+        // ============ 400 BAD_REQUEST: валидация DTO (city/street/houseNumber) ============
+        @Test
+        void add_invalidBody_returns400_withValidationErrors() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+
+            // нарушим все три поля: пустые значения
+            mvc.perform(post("/pickup/add-pickup-location")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("", "", ""))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("VALIDATION_ERROR"), equalTo("BAD_REQUEST"))))
+                    .andExpect(jsonPath("$.path").value("/pickup/add-pickup-location"));
+        }
+
+        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал во время сохранения ============
+        @Test
+        void add_serviceThrows_returns500() throws Exception {
+            var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
+            var token = auth(admin);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                doThrow(new RuntimeException("DB down"))
+                        .when(pickupLocationService)
+                        .addPickupLocation(any(PickupLocationRequestDTO.class));
+
+                mvc.perform(post("/pickup/add-pickup-location")
+                                .with(authentication(token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body("Berlin", "Main", "1A"))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                        .andExpect(jsonPath("$.path").value("/pickup/add-pickup-location"));
             } finally {
                 SecurityContextHolder.clearContext();
             }

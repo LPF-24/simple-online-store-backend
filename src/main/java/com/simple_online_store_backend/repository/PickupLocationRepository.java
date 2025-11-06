@@ -7,4 +7,8 @@ import java.util.List;
 
 public interface PickupLocationRepository extends JpaRepository<PickupLocation, Integer> {
     List<PickupLocation> findByActiveTrue();
+
+    boolean existsByCityIgnoreCaseAndStreetIgnoreCaseAndHouseNumberIgnoreCase(
+            String city, String street, String houseNumber
+    );
 }
