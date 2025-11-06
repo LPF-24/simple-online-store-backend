@@ -557,8 +557,125 @@ public class ProductController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @Operation(summary = "Get available products", description = "Returns only available (active) products")
-    @ApiResponse(responseCode = "200", description = "List of available products successfully retrieved")
+    @Operation(
+            summary = "Get all active (available) products",
+            description = """
+    Returns a list of all products that are currently marked as *available* (`availability = true`).
+
+    Accessible to both **ROLE_USER** and **ROLE_ADMIN**.
+
+    ### How to test in Swagger UI
+
+    **200 OK (success):**
+    1. `POST /auth/login` as either `ROLE_USER` or `ROLE_ADMIN` → copy the token.
+    2. Click **Authorize** → `Bearer <token>`.
+    3. `GET /product/all-active-products` → you'll get an array of active products.
+
+    **401 UNAUTHORIZED:**
+    - No token / malformed token / expired token → `401`.
+    
+    **423 ACCOUNT_LOCKED:**
+    1. Login as a normal user → Authorize.
+    2. `POST /auth/dev/_lock?username=<that_user>` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=<that_user>`.
+
+    **Notes:**
+    - Only products with `"availability": true` are returned.
+    - The response is an array of `ProductResponseDTO` objects.
+    - Endpoint is read-only and safe for both user and admin roles.
+    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "List of active (available) products",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = ProductResponseDTO.class)),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                [
+                                  {
+                                    "id": 101,
+                                    "productName": "Smartphone X",
+                                    "productDescription": "Latest Android phone",
+                                    "productCategory": "SMARTPHONES",
+                                    "price": 799.99,
+                                    "availability": true
+                                  },
+                                  {
+                                    "id": 102,
+                                    "productName": "Wireless Headphones",
+                                    "productDescription": "Noise-cancelling Bluetooth headset",
+                                    "productCategory": "ACCESSORIES",
+                                    "price": 149.99,
+                                    "availability": true
+                                  }
+                                ]
+                                """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized (missing or invalid token)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "UNAUTHORIZED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "UNAUTHORIZED",
+                                  "message": "Full authentication is required to access this resource",
+                                  "path": "/product/all-active-products"
+                                }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The refresh token has expired.",
+                                  "path": "/product/all-active-products"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/product/all-active-products"
+                        }
+                        """
+                            ))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    value = """
+                                {
+                                  "status": 500,
+                                  "code": "INTERNAL_ERROR",
+                                  "message": "Internal server error",
+                                  "path": "/product/all-active-products"
+                                }"""
+                            )
+                    )
+            )
+    })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/all-active-products")
     public ResponseEntity<List<ProductResponseDTO>> findAvailableProducts() {

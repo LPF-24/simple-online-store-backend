@@ -465,5 +465,89 @@ class ProductControllerTests {
             }
         }
     }
+
+    @Nested
+    class methodAllActiveProducts {
+
+        // ============ 200 OK (ROLE_USER): возвращаются только активные товары ============
+        @Test
+        void allActive_user_returns200_onlyActive() throws Exception {
+            var user = saveUser("maria", "maria@example.com", "ROLE_USER");
+            var a1 = saveProduct("Phone", "Android", new BigDecimal("499.99"), true, ProductCategory.SMARTPHONES);
+            var a2 = saveProduct("Case", "Protective", new BigDecimal("19.99"), true, ProductCategory.ACCESSORIES);
+            var inactive = saveProduct("Old TV", "CRT", new BigDecimal("49.99"), false, ProductCategory.SMARTPHONES);
+
+            mvc.perform(get("/product/all-active-products")
+                            .with(authentication(auth(user)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[*].id", hasItems(a1.getId(), a2.getId())))
+                    .andExpect(jsonPath("$[*].id", not(hasItem(inactive.getId()))))
+                    .andExpect(jsonPath("$[?(@.id==" + a1.getId() + ")].availability").value(hasItem(true)));
+        }
+
+        // ============ 200 OK (ROLE_ADMIN): тоже доступно и тоже только активные ============
+        @Test
+        void allActive_admin_returns200_onlyActive() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var a1 = saveProduct("Laptop", "Ultrabook", new BigDecimal("1299.00"), true, ProductCategory.SMARTPHONES);
+            var inactive = saveProduct("Broken Case", "N/A", new BigDecimal("1.00"), false, ProductCategory.ACCESSORIES);
+
+            mvc.perform(get("/product/all-active-products")
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].id").value(a1.getId()))
+                    .andExpect(jsonPath("$[0].availability").value(true));
+        }
+
+        // ============ 401 UNAUTHORIZED: без токена ============
+        @Test
+        void allActive_unauthorized_returns401() throws Exception {
+            // сервис требует isAuthenticated(), значит без токена — 401
+            mvc.perform(get("/product/all-active-products").accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.path").value("/product/all-active-products"));
+        }
+
+        // ============ 200 OK: корректный content-type ============
+        @Test
+        void allActive_returnsJsonContentType() throws Exception {
+            var user = saveUser("user", "user@example.com", "ROLE_USER");
+            saveProduct("Phone", "Android", new BigDecimal("499.99"), true, ProductCategory.SMARTPHONES);
+
+            mvc.perform(get("/product/all-active-products")
+                            .with(authentication(auth(user)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Type", containsString("application/json")));
+        }
+
+        // ============ 500 INTERNAL_SERVER_ERROR: сервис падает ============
+        @Test
+        void allActive_serviceThrows_returns500() throws Exception {
+            var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
+            var token = auth(admin);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                doThrow(new RuntimeException("DB down")).when(productService).getAvailableProducts();
+
+                mvc.perform(get("/product/all-active-products")
+                                .with(authentication(token))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                        .andExpect(jsonPath("$.path").value("/product/all-active-products"));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+    }
 }
 
