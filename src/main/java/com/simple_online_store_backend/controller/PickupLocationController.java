@@ -2,10 +2,15 @@ package com.simple_online_store_backend.controller;
 
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationRequestDTO;
 import com.simple_online_store_backend.dto.pickup_location.PickupLocationResponseDTO;
+import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PickupLocationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,8 +36,109 @@ public class PickupLocationController {
         this.service = service;
     }
 
-    @Operation(summary = "Get all pick-up locations", description = "Returns list of pick-up points for users/admins")
-    @ApiResponse(responseCode = "200", description = "List successfully returned")
+    @Operation(
+            summary = "Get all pickup locations (by role)",
+            description = """
+    Returns pickup locations depending on the caller's role.
+
+    - `ROLE_ADMIN` → sees **all** locations (active and inactive).
+    - `ROLE_USER`  → sees **only active** locations.
+
+    ### How to test in Swagger UI
+
+    **200 OK (success for USER):**
+    1. `POST /auth/login` as a user with `ROLE_USER` → copy `token`.
+    2. Click **Authorize** → `Bearer <token>`.
+    3. `GET /pickup/all-pickup-location` → you'll get an array of **active** locations.
+
+    **200 OK (success for ADMIN):**
+    1. `POST /auth/login` as a user with `ROLE_ADMIN` → copy `token`.
+    2. Click **Authorize** → `Bearer <token>`.
+    3. `GET /pickup/all-pickup-location` → you'll get **all** locations (active + inactive).
+
+    **401 UNAUTHORIZED:**
+    - No token / malformed token / expired token → `401` (see response schema below).
+
+    **Notes:**
+    - Endpoint requires authentication but is **not** admin-only.
+    - Response is a *list* of `PickupLocationResponseDTO`.
+    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of pickup locations",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = PickupLocationResponseDTO.class)),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "USER (only active)",
+                                            value = """
+                                            [
+                                              { "id": 1, "city": "Berlin",  "street": "Main",          "houseNumber": "1A", "active": true },
+                                              { "id": 3, "city": "Hamburg", "street": "Speicherstadt", "houseNumber": "7",  "active": true }
+                                            ]
+                                            """
+                                    ),
+                                    @ExampleObject(
+                                            name = "ADMIN (all, including inactive)",
+                                            value = """
+                                            [
+                                              { "id": 1, "city": "Berlin",  "street": "Main",          "houseNumber": "1A", "active": true },
+                                              { "id": 2, "city": "Munich",  "street": "Kaufingerstr.", "houseNumber": "12", "active": false },
+                                              { "id": 3, "city": "Hamburg", "street": "Speicherstadt", "houseNumber": "7",  "active": true }
+                                            ]
+                                            """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Empty list",
+                                            value = "[]"
+                                    )
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "MISSING_AUTH_HEADER", value = """
+                            {
+                              "status": 401,
+                              "code": "MISSING_AUTH_HEADER",
+                              "message": "Authentication header missing",
+                              "path": "/pickup/all-pickup-location"
+                            }"""),
+                                    @ExampleObject(name = "INVALID_ACCESS_TOKEN", value = """
+                            {
+                              "status": 401,
+                              "code": "INVALID_ACCESS_TOKEN",
+                              "message": "Invalid access token",
+                              "path": "/pickup/all-pickup-location"
+                            }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                            {
+                              "status": 401,
+                              "code": "TOKEN_EXPIRED",
+                              "message": "The access token has expired.",
+                              "path": "/pickup/all-pickup-location"
+                            }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(name = "INTERNAL_ERROR", value = """
+                    {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Internal server error",
+                      "path": "/pickup/all-pickup-location"
+                    }""")
+                    )
+            )
+    })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/all-pickup-location")
     public ResponseEntity<List<PickupLocationResponseDTO>> getAllPickupLocations() {
