@@ -7,6 +7,7 @@ import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PickupLocationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -25,6 +26,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "Pickup Locations", description = "Manage pick-up locations")
 @RestController
@@ -300,17 +302,149 @@ public class PickupLocationController {
         return ResponseEntity.ok(service.addPickupLocation(dto));
     }
 
-    @Operation(summary = "Close pick-up location", description = "Deactivates pick-up location by ID")
+    @Operation(
+            summary = "Close a pick-up location (admin-only)",
+            description = """
+    Closes a pick-up location by its id (sets it to inactive). Only users with `ROLE_ADMIN` can perform this action.
+
+    ### How to test in Swagger UI
+
+    **200 OK (success):**
+    1. `POST /auth/login` as `ROLE_ADMIN` → copy `token`.
+    2. Click **Authorize** → `Bearer <token>`.
+    3. `PATCH /pickup/{id}/close-pick-up-location` with an **existing active** location id (e.g., `1`) → you'll get a confirmation message.
+
+    **400 VALIDATION_ERROR:**
+    - Try to close a location that is **already inactive** (e.g., close the same id twice) → `400`.
+
+    **401 UNAUTHORIZED:**
+    - No token / invalid token → `401`.
+
+    **403 FORBIDDEN / ACCESS_DENIED:**
+    - Logged in without admin rights (e.g., `ROLE_USER`) → `403`.
+
+    **404 ENTITY_NOT_FOUND:**
+    - Use a non-existing location id (e.g., `1073741824`) → `404`.
+
+    **Notes:**
+    - Admin-only operation.
+    - Response is a concise message confirming closure.
+    """
+    )
+    @Parameter(
+            name = "id",
+            description = "Pick-up location ID to close",
+            example = "1",
+            required = true,
+            in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Pick-up location closed"),
-            @ApiResponse(responseCode = "403", description = "Only admin can close pick-up locations"),
-            @ApiResponse(responseCode = "404", description = "Location not found")
+            @ApiResponse(responseCode = "200", description = "Pick-up location successfully closed",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = java.util.Map.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                    {
+                                      "message": "Pick-up location with id 1 closed."
+                                    }
+                                    """
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Validation failed",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "VALIDATION_ERROR (already closed)",
+                                    value = """
+                                {
+                                  "status": 400,
+                                  "code": "VALIDATION_ERROR",
+                                  "message": "Pick-up location with id 1 is already closed",
+                                  "path": "/pickup/1/close-pick-up-location"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "UNAUTHORIZED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "UNAUTHORIZED",
+                                  "message": "Full authentication is required to access this resource",
+                                  "path": "/pickup/1/close-pick-up-location"
+                                }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The refresh token has expired.",
+                                  "path": "/pickup/1/close-pick-up-location"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden (admin-only)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCESS_DENIED",
+                                    value = """
+                                {
+                                  "status": 403,
+                                  "code": "ACCESS_DENIED",
+                                  "message": "Access is denied",
+                                  "path": "/pickup/1/close-pick-up-location"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "Pick-up location not found",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ENTITY_NOT_FOUND",
+                                    value = """
+                                {
+                                  "status": 404,
+                                  "code": "ENTITY_NOT_FOUND",
+                                  "message": "Pick-up location with id 1073741824 doesn't exist",
+                                  "path": "/pickup/1073741824/close-pick-up-location"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    value = """
+                                {
+                                  "status": 500,
+                                  "code": "INTERNAL_ERROR",
+                                  "message": "Internal server error",
+                                  "path": "/pickup/1/close-pick-up-location"
+                                }"""
+                            )
+                    )
+            )
     })
     @SecurityRequirement(name = "bearerAuth")
-    @RequestMapping(value = "/{id}/close-pick-up-location", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public ResponseEntity<HttpStatus> closePickupLocation(@PathVariable("id") int id) {
+    @PatchMapping("/{id}/close-pick-up-location")
+    public ResponseEntity<?> closePickupLocation(@PathVariable("id") int id) {
         service.closePickupLocation(id);
-        return ResponseEntity.ok(HttpStatus.OK);
+        return ResponseEntity.ok(java.util.Map.of("message", "Pick-up location with id " + id + " closed."));
     }
 
     @Operation(summary = "Open pick-up location", description = "Reactivates pick-up location by ID")

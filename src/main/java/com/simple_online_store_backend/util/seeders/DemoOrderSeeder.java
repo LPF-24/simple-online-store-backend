@@ -14,6 +14,7 @@ import java.util.ArrayList;
 
 // @ConditionalOnProperty(value = "demo.helpers.enabled", havingValue = "true")
 @Component
+@org.springframework.core.annotation.Order(4)
 class DemoOrderSeeder implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DemoOrderSeeder.class);
 

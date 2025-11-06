@@ -62,12 +62,21 @@ public class PickupLocationService {
     }
 
     @Transactional
-    @PreAuthorize(("hasRole('ROLE_ADMIN')"))
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void closePickupLocation(int id) {
-        PickupLocation location = pickupLocationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Pickup location with this id doesn't exist"));
+        boolean active = pickupLocationRepository.existsByIdAndActiveTrue(id);
+        if (!active) {
+            boolean exists = pickupLocationRepository.existsById(id);
+            if (!exists) {
+                throw new EntityNotFoundException("Pick-up location with id " + id + " doesn't exist");
+            }
+            throw new ValidationException("Pick-up location with id " + id + " is already closed");
+        }
 
+        PickupLocation location = pickupLocationRepository.findById(id)
+                .orElseThrow();
         location.setActive(false);
+        pickupLocationRepository.save(location);
     }
 
     @Transactional

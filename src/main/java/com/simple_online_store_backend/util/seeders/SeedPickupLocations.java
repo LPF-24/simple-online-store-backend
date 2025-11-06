@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Idempotent: checks for existence before inserting.
  */
 @Component
-@Order(100)
+@Order(2)
 //@Profile("!test") // не запускаем сидер в тестовом окружении
 public class SeedPickupLocations implements CommandLineRunner {
 
