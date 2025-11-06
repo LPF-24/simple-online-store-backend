@@ -160,6 +160,19 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", msg, req.getRequestURI());
     }
 
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDuplicateResource(
+            DuplicateResourceException ex,
+            HttpServletRequest req
+    ) {
+        return error(
+                HttpStatus.CONFLICT,
+                "DUPLICATE_RESOURCE",
+                ex.getMessage(),
+                req.getRequestURI()
+        );
+    }
+
     private ResponseEntity<ErrorResponseDTO> error(HttpStatus status, String code, String message, String path) {
         ErrorResponseDTO dto = new ErrorResponseDTO();
         dto.setStatus(status.value());

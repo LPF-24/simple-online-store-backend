@@ -10,6 +10,7 @@ import java.util.EnumSet;
 public class ProductCategoryValidator implements ConstraintValidator<ValidProductCategory, ProductCategory> {
     @Override
     public boolean isValid(ProductCategory value, ConstraintValidatorContext context) {
-        return value != null && EnumSet.allOf(ProductCategory.class).contains(value);
+        if (value == null) return true;
+        return java.util.EnumSet.allOf(ProductCategory.class).contains(value);
     }
 }

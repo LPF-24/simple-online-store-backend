@@ -1,7 +1,9 @@
 package com.simple_online_store_backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.simple_online_store_backend.dto.product.ProductRequestDTO;
+import com.simple_online_store_backend.dto.product.ProductUpdateDTO;
 import com.simple_online_store_backend.entity.Person;
 import com.simple_online_store_backend.entity.Product;
 import com.simple_online_store_backend.enums.ProductCategory;
@@ -22,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
@@ -83,14 +86,14 @@ class ProductControllerTests {
                 pd, null, java.util.List.of(new SimpleGrantedAuthority(p.getRole())));
     }
 
-    private String body(String name, String desc, String price, boolean availability, ProductCategory category) throws Exception {
-        ProductRequestDTO dto = new ProductRequestDTO();
-        dto.setProductName(name);
-        dto.setProductDescription(desc);
-        dto.setPrice(new BigDecimal(price));
-        dto.setAvailability(availability);
-        dto.setProductCategory(category);
-        return objectMapper.writeValueAsString(dto);
+    private String body(String name, String desc, String price, Boolean availability, ProductCategory category) throws Exception {
+        ObjectNode root = objectMapper.createObjectNode();
+        if (name != null)        root.put("productName", name);
+        if (desc != null)        root.put("productDescription", desc);
+        if (price != null)       root.put("price", new java.math.BigDecimal(price)); // добавляем только если не null
+        if (availability != null)root.put("availability", availability);
+        if (category != null)    root.put("productCategory", category.name());
+        return objectMapper.writeValueAsString(root);
     }
 
     @Nested
@@ -282,6 +285,184 @@ class ProductControllerTests {
             var all = productRepository.findAll();
             long phones = all.stream().filter(p -> "Phone".equals(p.getProductName())).count();
             Assertions.assertEquals(1, phones, "should not create duplicate product names");
+        }
+    }
+
+    @Nested
+    class methodUpdateProduct {
+
+        // ============ 200 OK: ADMIN частично обновляет существующий продукт (меняем только name + price) ============
+        @Test
+        void update_admin_partial_returns200_andPersists() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+
+            mvc.perform(patch("/product/" + product.getId() + "/update-product")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Phone X", null, "549.99", true, null))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(product.getId()))
+                    .andExpect(jsonPath("$.productName").value("Phone X"))
+                    .andExpect(jsonPath("$.price").value(closeTo(549.99, 0.01)))
+                    // unchanged fields
+                    .andExpect(jsonPath("$.productDescription").value("Android smartphone"))
+                    .andExpect(jsonPath("$.availability").value(true))
+                    .andExpect(jsonPath("$.productCategory").value("SMARTPHONES"));
+
+            var updated = productRepository.findById(product.getId()).orElseThrow();
+            Assertions.assertEquals("Phone X", updated.getProductName());
+            Assertions.assertEquals(new BigDecimal("549.99"), updated.getPrice());
+            Assertions.assertEquals("Android smartphone", updated.getProductDescription());
+            Assertions.assertEquals(true, updated.getAvailability());
+            Assertions.assertEquals(ProductCategory.SMARTPHONES, updated.getProductCategory());
+        }
+
+        // ============ 200 OK: ADMIN полное обновление всеми полями тоже работает ============
+        @Test
+        void update_admin_full_returns200_andPersists() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+
+            mvc.perform(patch("/product/" + product.getId() + "/update-product")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Case", "Protective case", "19.99", false, ProductCategory.ACCESSORIES))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.productName").value("Case"))
+                    .andExpect(jsonPath("$.productDescription").value("Protective case"))
+                    .andExpect(jsonPath("$.price").value(closeTo(19.99, 0.01)))
+                    .andExpect(jsonPath("$.availability").value(false))
+                    .andExpect(jsonPath("$.productCategory").value("ACCESSORIES"));
+
+            var updated = productRepository.findById(product.getId()).orElseThrow();
+            Assertions.assertEquals("Case", updated.getProductName());
+            Assertions.assertEquals("Protective case", updated.getProductDescription());
+            Assertions.assertEquals(new BigDecimal("19.99"), updated.getPrice());
+            Assertions.assertEquals(false, updated.getAvailability());
+            Assertions.assertEquals(ProductCategory.ACCESSORIES, updated.getProductCategory());
+        }
+
+        // ============ 400 BAD_REQUEST: некорректные значения (price < 0, короткое имя) ============
+        @Test
+        void update_invalidBody_returns400() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+
+            mvc.perform(patch("/product/" + product.getId() + "/update-product")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("", "short", "-1", true, null))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("VALIDATION_ERROR"), equalTo("BAD_REQUEST"))))
+                    .andExpect(jsonPath("$.path").value("/product/" + product.getId() + "/update-product"));
+        }
+
+        // ============ 403 FORBIDDEN: USER не имеет прав ============
+        @Test
+        void update_user_forbidden_returns403_andNotChanged() throws Exception {
+            var user = saveUser("maria", "maria@example.com", "ROLE_USER");
+            var token = auth(user);
+            var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                mvc.perform(patch("/product/" + product.getId() + "/update-product")
+                                .with(authentication(token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body("Phone Z", null, null, true, null))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isForbidden())
+                        .andExpect(jsonPath("$.status").value(403))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                        .andExpect(jsonPath("$.path").value("/product/" + product.getId() + "/update-product"));
+
+                var same = productRepository.findById(product.getId()).orElseThrow();
+                Assertions.assertEquals("Phone", same.getProductName());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        // ============ 401 UNAUTHORIZED: без токена ============
+        @Test
+        void update_unauthorized_returns401() throws Exception {
+            var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+
+            mvc.perform(patch("/product/" + product.getId() + "/update-product")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Phone X", null, null, true, null))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.path").value("/product/" + product.getId() + "/update-product"));
+        }
+
+        // ============ 404 NOT FOUND: несуществующий id ============
+        @Test
+        void update_notFound_returns404() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            int missingId = 999_999;
+
+            mvc.perform(patch("/product/" + missingId + "/update-product")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Phone X", null, null, true, null))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code").value("ENTITY_NOT_FOUND"))
+                    .andExpect(jsonPath("$.message", containsString("wasn't found")))
+                    .andExpect(jsonPath("$.path").value("/product/" + missingId + "/update-product"));
+        }
+
+        @Test
+        void update_duplicateName_returns409() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var p1 = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+            var p2 = saveProduct("Case", "Protective case", BigDecimal.valueOf(19.99), true, ProductCategory.ACCESSORIES);
+
+            mvc.perform(patch("/product/" + p2.getId() + "/update-product")
+                            .with(authentication(auth(admin)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body("Phone", null, null, true, null))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.status", equalTo(409)))
+                    .andExpect(jsonPath("$.code", equalTo("DUPLICATE_RESOURCE")))
+                    .andExpect(jsonPath("$.path").value("/product/" + p2.getId() + "/update-product"));
+        }
+
+        // ============ 500 INTERNAL_SERVER_ERROR: эмуляция падения сервиса ============
+        @Test
+        void update_serviceThrows_returns500() throws Exception {
+            var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
+            var token = auth(admin);
+            var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                doThrow(new RuntimeException("DB down"))
+                        .when(productService)
+                        .editProduct(any(ProductUpdateDTO.class), anyInt());
+
+                mvc.perform(patch("/product/" + product.getId() + "/update-product")
+                                .with(authentication(token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body("Phone X", null, null, true, null))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                        .andExpect(jsonPath("$.path").value("/product/" + product.getId() + "/update-product"));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
         }
     }
 }

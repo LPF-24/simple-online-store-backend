@@ -2,10 +2,12 @@ package com.simple_online_store_backend.controller;
 
 import com.simple_online_store_backend.dto.product.ProductRequestDTO;
 import com.simple_online_store_backend.dto.product.ProductResponseDTO;
+import com.simple_online_store_backend.dto.product.ProductUpdateDTO;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
 import com.simple_online_store_backend.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -297,18 +299,257 @@ public class ProductController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @Operation(summary = "Update product", description = "Allows admin to update product by ID")
+    @Operation(
+            summary = "Update a product (admin-only, partial update)",
+            description = """
+    Partially updates an existing product by id using `ProductUpdateDTO`.
+    Only non-null fields will be applied; other fields remain unchanged.
+    Access restricted to `ROLE_ADMIN`.
+
+    ### How to test in Swagger UI
+
+    **200 OK (success):**
+    1) POST /auth/login as `ROLE_ADMIN` → copy token.
+    2) Click **Authorize** → `Bearer <token>`.
+    3) PATCH /product/{id}/update-product with a valid JSON body (see request examples).
+
+    **400 BAD REQUEST (validation):**
+    - Send invalid values (e.g., blank `productName`, negative `price`) → `400 VALIDATION_ERROR`.
+    - Send broken JSON or wrong enum value → `400 MESSAGE_NOT_READABLE`.
+
+    **401 UNAUTHORIZED:**
+    - No token / malformed token / expired token → `401`.
+
+    **403 FORBIDDEN:**
+    - Logged in without admin rights → `403`.
+
+    **404 ENTITY_NOT_FOUND:**
+    - Use a non-existing product id → `404`.
+
+    **409 CONFLICT (duplicate):**
+    - Try to update `productName` to an already existing product's name → `409 DUPLICATE_RESOURCE`.
+
+    **Notes:**
+    - Partial update: send only the fields you want to change.
+    - `productCategory` is optional for PATCH; if provided, must be a valid enum.
+    """
+    )
+    @Parameter(
+            name = "id",
+            description = "Product ID to update",
+            example = "1",
+            required = true,
+            in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            description = "Partial product update payload (only non-null fields will be applied)",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ProductUpdateDTO.class),
+                    examples = {
+                            @ExampleObject(
+                                    name = "Valid (partial)",
+                                    summary = "Change only name and price",
+                                    value = """
+                                {
+                                  "productName": "Phone X",
+                                  "price": 549.99
+                                }"""
+                            ),
+                            @ExampleObject(
+                                    name = "Valid (full)",
+                                    summary = "Change all fields at once",
+                                    value = """
+                                {
+                                  "productName": "Phone case with a picture of a cat",
+                                  "productDescription": "Protective case (new)",
+                                  "productCategory": "ACCESSORIES",
+                                  "price": 19.99,
+                                  "availability": false
+                                }"""
+                            ),
+                            @ExampleObject(
+                                    name = "Invalid (violates validation)",
+                                    summary = "Blank name and negative price → 400 VALIDATION_ERROR",
+                                    value = """
+                                {
+                                  "productName": "",
+                                  "price": -1
+                                }"""
+                            ),
+                            @ExampleObject(
+                                    name = "Malformed JSON / wrong enum",
+                                    summary = "Broken JSON or invalid enum value → 400 MESSAGE_NOT_READABLE",
+                                    value = "{ \"productName\": \"Phone\", \"productCategory\": \"WRONG\", \"price\": 499.99 "
+                            ),
+                            @ExampleObject(
+                                    name = "Duplicate name",
+                                    summary = "Rename to an already existing product name → 409 DUPLICATE_RESOURCE",
+                                    value = """
+                                {
+                                  "productName": "Phone",
+                                  "availability": true
+                                }"""
+                            )
+                    }
+            )
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Product successfully updated"),
-            @ApiResponse(responseCode = "400", description = "Validation failed"),
-            @ApiResponse(responseCode = "403", description = "Only admin can update products"),
-            @ApiResponse(responseCode = "404", description = "Product not found")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Product updated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ProductResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "OK",
+                                    value = """
+                                {
+                                  "id": 1,
+                                  "productName": "Phone X",
+                                  "productDescription": "Android smartphone",
+                                  "productCategory": "SMARTPHONES",
+                                  "price": 549.99,
+                                  "availability": true
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request (validation / parsing failed)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "VALIDATION_ERROR",
+                                            value = """
+                                        {
+                                          "status": 400,
+                                          "code": "VALIDATION_ERROR",
+                                          "message": "Product name must not be blank; Price must be at least 0.01",
+                                          "path": "/product/1/update-product"
+                                        }"""
+                                    ),
+                                    @ExampleObject(
+                                            name = "MESSAGE_NOT_READABLE",
+                                            value = """
+                                        {
+                                          "status": 400,
+                                          "code": "MESSAGE_NOT_READABLE",
+                                          "message": "Cannot deserialize value...",
+                                          "path": "/product/1/update-product"
+                                        }"""
+                                    )
+                            }
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = {
+                                    @ExampleObject(name = "UNAUTHORIZED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "UNAUTHORIZED",
+                                  "message": "Full authentication is required to access this resource",
+                                  "path": "/product/1/update-product"
+                                }"""),
+                                    @ExampleObject(name = "TOKEN_EXPIRED", value = """
+                                {
+                                  "status": 401,
+                                  "code": "TOKEN_EXPIRED",
+                                  "message": "The refresh token has expired.",
+                                  "path": "/product/1/update-product"
+                                }""")
+                            }
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Forbidden (admin-only)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCESS_DENIED",
+                                    value = """
+                                {
+                                  "status": 403,
+                                  "code": "ACCESS_DENIED",
+                                  "message": "Access is denied",
+                                  "path": "/product/1/update-product"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Product not found",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ENTITY_NOT_FOUND",
+                                    value = """
+                                {
+                                  "status": 404,
+                                  "code": "ENTITY_NOT_FOUND",
+                                  "message": "Product with id 1073741824 wasn't found",
+                                  "path": "/product/1073741824/update-product"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Conflict (duplicate resource)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "DUPLICATE_RESOURCE",
+                                    value = """
+                                {
+                                  "status": 409,
+                                  "code": "DUPLICATE_RESOURCE",
+                                  "message": "Product with name 'Phone' already exists",
+                                  "path": "/product/1/update-product"
+                                }"""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal Server Error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "INTERNAL_ERROR",
+                                    value = """
+                                {
+                                  "status": 500,
+                                  "code": "INTERNAL_ERROR",
+                                  "message": "Internal server error",
+                                  "path": "/product/1/update-product"
+                                }"""
+                            )
+                    )
+            )
     })
     @SecurityRequirement(name = "bearerAuth")
-    @RequestMapping(value = "/{id}/update-product", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable("id") int productId,
-                                                            @RequestBody @Valid ProductRequestDTO dto,
-                                                            BindingResult bindingResult) {
+    @PatchMapping("/{id}/update-product")
+    public ResponseEntity<ProductResponseDTO> updateProduct(
+            @PathVariable("id") int productId,
+            @RequestBody @Valid ProductUpdateDTO dto,
+            BindingResult bindingResult
+    ) {
         if (bindingResult.hasErrors())
             ErrorUtil.returnErrorsToClient(bindingResult);
 
