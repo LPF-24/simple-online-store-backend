@@ -399,5 +399,130 @@ class PickupLocationControllerTest {
             }
         }
     }
+
+    @Nested
+    class methodOpenPickupLocation {
+
+        // ============ 200 OK: ADMIN открывает существующую закрытую точку ==========
+        @Test
+        void open_admin_existingClosed_returns200_andPersists() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var location = saveLocation("Berlin", "Main", "1A", false);
+
+            mvc.perform(patch("/pickup/" + location.getId() + "/open-pick-up-location")
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").value("Pick-up location with id " + location.getId() + " successfully open."));
+
+            // убедимся, что запись реально стала активной
+            var updated = pickupLocationRepository.findById(location.getId()).orElseThrow();
+            Assertions.assertTrue(updated.getActive(), "location must be active after open");
+        }
+
+        // ============ 400 BAD REQUEST: уже открыта ==========
+        @Test
+        void open_admin_alreadyOpen_returns400_andDoesNotChangeEntity() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            var location = saveLocation("Berlin", "Main", "1A", true);
+
+            mvc.perform(patch("/pickup/" + location.getId() + "/open-pick-up-location")
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code", anyOf(equalTo("VALIDATION_ERROR"), equalTo("BAD_REQUEST"))))
+                    .andExpect(jsonPath("$.message", containsString("already opened")))
+                    .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/open-pick-up-location"));
+
+            var same = pickupLocationRepository.findById(location.getId()).orElseThrow();
+            Assertions.assertTrue(same.getActive(), "location must remain active if already open");
+        }
+
+        // ============ 403 FORBIDDEN: USER не имеет прав ==========
+        @Test
+        void open_user_forbidden_returns403_andDoesNotChangeEntity() throws Exception {
+            var user = saveUser("maria", "maria@example.com", "ROLE_USER");
+            var token = auth(user);
+            var location = saveLocation("Berlin", "Main", "1A", false);
+
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                mvc.perform(patch("/pickup/" + location.getId() + "/open-pick-up-location")
+                                .with(authentication(token))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isForbidden())
+                        .andExpect(jsonPath("$.status").value(403))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
+                        .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/open-pick-up-location"));
+
+                var same = pickupLocationRepository.findById(location.getId()).orElseThrow();
+                Assertions.assertFalse(same.getActive(), "location must remain inactive for ROLE_USER");
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        // ============ 401 UNAUTHORIZED: без токена ==========
+        @Test
+        void open_unauthorized_returns401() throws Exception {
+            var location = saveLocation("Berlin", "Main", "1A", false);
+
+            mvc.perform(patch("/pickup/" + location.getId() + "/open-pick-up-location")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.code", anyOf(
+                            equalTo("MISSING_AUTH_HEADER"),
+                            equalTo("UNAUTHORIZED"),
+                            equalTo("INVALID_ACCESS_TOKEN"),
+                            equalTo("TOKEN_EXPIRED")
+                    )))
+                    .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/open-pick-up-location"));
+        }
+
+        // ============ 404 NOT FOUND: несуществующий id ==========
+        @Test
+        void open_admin_notFound_returns404() throws Exception {
+            var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
+            int missingId = 999_999;
+
+            mvc.perform(patch("/pickup/" + missingId + "/open-pick-up-location")
+                            .with(authentication(auth(admin)))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code").value("ENTITY_NOT_FOUND"))
+                    .andExpect(jsonPath("$.message", containsString("doesn't exist")))
+                    .andExpect(jsonPath("$.path").value("/pickup/" + missingId + "/open-pick-up-location"));
+        }
+
+        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ==========
+        @Test
+        void open_serviceThrows_returns500() throws Exception {
+            var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
+            var token = auth(admin);
+            var location = saveLocation("Berlin", "Main", "1A", false);
+
+            // @PreAuthorize → перед стаббингом кладём токен в SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(token);
+            try {
+                doThrow(new RuntimeException("DB down"))
+                        .when(pickupLocationService)
+                        .openPickupLocation(anyInt());
+
+                mvc.perform(patch("/pickup/" + location.getId() + "/open-pick-up-location")
+                                .with(authentication(token))
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(jsonPath("$.status").value(500))
+                        .andExpect(jsonPath("$.code", anyOf(equalTo("INTERNAL_ERROR"), equalTo("SERVER_ERROR"))))
+                        .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/open-pick-up-location"));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+    }
 }
 
