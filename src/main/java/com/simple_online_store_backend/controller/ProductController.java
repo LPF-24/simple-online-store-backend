@@ -135,6 +135,12 @@ public class ProductController {
 
     **403 FORBIDDEN:**
     - Logged in without admin rights (e.g., `ROLE_USER`) → `403`.
+    
+    **423 ACCOUNT_LOCKED:**
+    1. Login as admin → Authorize.
+    2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=admin`.
     """
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -269,6 +275,21 @@ public class ProductController {
                             )
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/product/add-product"
+                        }
+                        """
+                            ))),
             @ApiResponse(
                     responseCode = "500",
                     description = "Internal Server Error",
@@ -328,6 +349,12 @@ public class ProductController {
 
     **409 CONFLICT (duplicate):**
     - Try to update `productName` to an already existing product's name → `409 DUPLICATE_RESOURCE`.
+
+    **423 ACCOUNT_LOCKED:**
+    1. Login as admin → Authorize.
+    2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=admin`.
 
     **Notes:**
     - Partial update: send only the fields you want to change.
@@ -524,6 +551,21 @@ public class ProductController {
                             )
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/product/1/update-product"
+                        }
+                        """
+                            ))),
             @ApiResponse(
                     responseCode = "500",
                     description = "Internal Server Error",

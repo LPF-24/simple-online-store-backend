@@ -66,9 +66,9 @@ public class AddressController {
                             - Call `/address/add-address` — admins are not allowed; you’ll get `403 Forbidden`.
                     
                             **423 ACCOUNT_LOCKED:**
-                            1. Login as a normal user → Authorize → `/auth/dev/_lock?username=<that_user>`.
+                            1. Login as user → Authorize → `/auth/dev/_lock?username=user`.
                             2. Call `/address/add-address` — you’ll get `423 Locked`.
-                            3. To fix it → `/auth/dev/_unlock?username=<that_user>`.
+                            3. To fix it → `/auth/dev/_unlock?username=user`.
                     
                             **Notes:**
                             - Dev endpoints `/auth/dev/_lock` and `/_unlock` are available only when `demo.helpers.enabled=true`.

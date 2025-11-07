@@ -177,8 +177,11 @@ public class PickupLocationController {
     - Body violates validation rules (e.g., empty or invalid `city/street/houseNumber`) → `400`.
     - If such a **pick-up location already exists** in the database → `400`
 
-    **500 INTERNAL SERVER ERROR:**
-    - Unexpected server error (e.g., DB failure) → `500`.
+    **423 ACCOUNT_LOCKED:**
+    1. Login as admin → Authorize.
+    2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=admin`.
     """
     )
     @ApiResponses({
@@ -256,6 +259,21 @@ public class PickupLocationController {
                         }""")
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/pickup/add-pickup-location"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",
@@ -325,6 +343,12 @@ public class PickupLocationController {
 
     **404 ENTITY_NOT_FOUND:**
     - Use a non-existing location id (e.g., `1073741824`) → `404`.
+
+    **423 ACCOUNT_LOCKED:**
+    1. Login as admin → Authorize.
+    2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=admin`.
 
     **Notes:**
     - Admin-only operation.
@@ -423,6 +447,21 @@ public class PickupLocationController {
                             )
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/pickup/1/close-pick-up-location"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",
@@ -470,6 +509,12 @@ public class PickupLocationController {
 
     **404 ENTITY_NOT_FOUND:**
     - Use a non-existing location id (e.g., `1073741824`) → `404`.
+    
+    **423 ACCOUNT_LOCKED:**
+    1. Login as admin → Authorize.
+    2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=admin`.
 
     **Notes:**
     - Admin-only operation.
@@ -569,6 +614,21 @@ public class PickupLocationController {
                             )
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/pickup/1/open-pick-up-location"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",
@@ -616,6 +676,12 @@ public class PickupLocationController {
 
     **404 ENTITY_NOT_FOUND:**
     - Use a non-existing location id (e.g., `1073741824`) → `404`.
+    
+    **423 ACCOUNT_LOCKED:**
+    1. Login as admin → Authorize.
+    2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+    3. Call this endpoint → **423**.
+    4. To restore → `POST /auth/dev/_unlock?username=admin`.
 
     **Notes:**
     - Admin-only operation.
@@ -764,6 +830,21 @@ public class PickupLocationController {
                             )
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/pickup/1/update-pick-up-location"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",

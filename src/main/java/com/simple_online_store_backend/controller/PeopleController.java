@@ -5,11 +5,9 @@ import com.simple_online_store_backend.dto.login.LoginRequestDTO;
 import com.simple_online_store_backend.dto.person.PersonResponseDTO;
 import com.simple_online_store_backend.exception.ErrorResponseDTO;
 import com.simple_online_store_backend.exception.ErrorUtil;
-import com.simple_online_store_backend.exception.ValidationException;
 import com.simple_online_store_backend.security.PersonDetails;
 import com.simple_online_store_backend.service.PeopleService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -61,6 +59,12 @@ public class PeopleController {
 
         **403 FORBIDDEN:**
         - Authenticated but without `ROLE_ADMIN` (e.g. `ROLE_USER`) → `403`.
+        
+        **423 ACCOUNT_LOCKED:**
+        1. Login as admin → Authorize.
+        2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+        3. Call this endpoint → **423**.
+        4. To restore → `POST /auth/dev/_unlock?username=admin`.
 
         **Notes:**
         - Endpoint is **admin-only** (`hasRole('ROLE_ADMIN')`).
@@ -140,6 +144,21 @@ public class PeopleController {
                             }""")
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/people/all-customers"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",

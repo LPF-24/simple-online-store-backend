@@ -60,10 +60,10 @@ public class OrderController {
                     - Login as `ROLE_ADMIN` (if access is restricted to regular users) → call the endpoint → **403 ACCESS_DENIED**.
             
                     **423 ACCOUNT_LOCKED:**
-                    1) Login as a normal user → Authorize.
-                    2) `POST /auth/dev/_lock?username=<that_user>` (dev only).
+                    1) Login as user → Authorize.
+                    2) `POST /auth/dev/_lock?username=user` (dev only).
                     3) Call this endpoint → **423**.
-                    4) To restore → `POST /auth/dev/_unlock?username=<that_user>`.
+                    4) To restore → `POST /auth/dev/_unlock?username=user`.
             
                     **Notes:**
                     - Requires a valid JWT access token (bearer auth).
@@ -215,10 +215,10 @@ public class OrderController {
         - Expired tokens also result in **401** (`TOKEN_EXPIRED`).
 
         **423 ACCOUNT_LOCKED:**
-        1) Login as a normal user → Authorize.
-        2) `POST /auth/dev/_lock?username=<that_user>` (dev only).
+        1) Login as user → Authorize.
+        2) `POST /auth/dev/_lock?username=user` (dev only).
         3) Call `GET /orders/{id}` → **423**.
-        4) To restore → `POST /auth/dev/_unlock?username=<that_user>`.
+        4) To restore → `POST /auth/dev/_unlock?username=user`.
 
         **Notes:**
         - Requires a valid JWT access token (bearer auth).
@@ -481,8 +481,6 @@ public class OrderController {
                                             }
                                             """
                             ),
-
-                            // === MALFORMED JSON → 400 MESSAGE_NOT_READABLE ===
                             @ExampleObject(
                                     name = "Malformed JSON",
                                     summary = "Broken JSON body (will trigger MESSAGE_NOT_READABLE)",
@@ -616,6 +614,12 @@ public class OrderController {
 
         **403 FORBIDDEN:**
         - Logged in without `ROLE_ADMIN` (e.g., `ROLE_USER`) → `403`.
+     
+        **423 ACCOUNT_LOCKED:**
+        1. Login as admin → Authorize.
+        2. `POST /auth/dev/_lock?username=admin` → the account becomes locked.
+        3. Call this endpoint → **423**.
+        4. To restore → `POST /auth/dev/_unlock?username=admin`.
 
         **Notes:**
         - Endpoint is admin-only.
@@ -674,6 +678,21 @@ public class OrderController {
                         }""")
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/orders"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",
@@ -717,6 +736,12 @@ public class OrderController {
 
         **404 ENTITY_NOT_FOUND:**
         - Use a non-existing order id (e.g., `1073741824`) → `404`.
+
+        **423 ACCOUNT_LOCKED:**
+        1. Login as user → Authorize.
+        2. `POST /auth/dev/_lock?username=user` → the account becomes locked.
+        3. Call this endpoint → **423**.
+        4. To restore → `POST /auth/dev/_unlock?username=user`.
 
         **Notes:**
         - You must be the order owner.
@@ -830,6 +855,21 @@ public class OrderController {
                             )
                     )
             ),
+            @ApiResponse(responseCode = "423", description = "Account is locked/deactivated",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponseDTO.class),
+                            examples = @ExampleObject(
+                                    name = "ACCOUNT_LOCKED",
+                                    summary = "LockedException mapping from security filter",
+                                    value = """
+                        {
+                          "status": 423,
+                          "code": "ACCOUNT_LOCKED",
+                          "message": "Your account is deactivated. Would you like to restore it?",
+                          "path": "/orders/101/cancel-order"
+                        }
+                        """
+                            ))),
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = @Content(
                             mediaType = "application/json",
