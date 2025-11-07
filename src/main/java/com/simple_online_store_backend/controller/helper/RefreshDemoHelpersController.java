@@ -58,7 +58,6 @@ public class RefreshDemoHelpersController {
         resp.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    /** 200 OK: выдать валидный refresh и сохранить его под username */
     @PostMapping("/_issue-refresh")
     @Operation(summary = "Issue a valid refresh cookie (200 path)")
     public ResponseEntity<?> issueValid(@RequestParam(defaultValue = "admin") String username,
@@ -69,7 +68,6 @@ public class RefreshDemoHelpersController {
         return ResponseEntity.ok(Map.of("message", "Valid refresh issued for " + username));
     }
 
-    /** 401 TOKEN_EXPIRED: refresh с истёкшим сроком (валидная подпись, exp в прошлом) */
     @PostMapping("/_issue-expired")
     @Operation(summary = "Issue an expired refresh cookie (401 TOKEN_EXPIRED)")
     public ResponseEntity<?> issueExpired(@RequestParam(defaultValue = "admin") String username,
