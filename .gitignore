@@ -1,6 +1,7 @@
 backup.sql
 src/main/java/com/simple_online_store_backend/validation/annotation/ValidProductsList.java
 src/main/java/com/simple_online_store_backend/validation/validator/ProductsValidator.java
+src/main/java/com/simple_online_store_backend/dto/order/OrderRequestDTO.java
 
 HELP.md
 target/

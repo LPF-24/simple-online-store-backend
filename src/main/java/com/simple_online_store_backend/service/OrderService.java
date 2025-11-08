@@ -54,7 +54,6 @@ public class OrderService {
             throw new ValidationException("Your account is deactivated. Please restore your account before placing an order.");
         }
 
-        // 1) Продукты
         var products = req.getProductIds().stream()
                 .map(id -> productRepository.findById(id)
                         .orElseThrow(() -> new EntityNotFoundException("Product with ID " + id + " not found")))
@@ -67,12 +66,8 @@ public class OrderService {
             throw new ValidationException("Some products are not available for order");
         }
 
-        // 2) Доставка: адрес или ПВЗ
         var hasAddress = req.getAddressId() != null;
         var hasPickup  = req.getPickupLocationId() != null;
-        if (hasAddress == hasPickup) {
-            throw new ValidationException("Either addressId or pickupLocationId must be provided (but not both)");
-        }
 
         var order = new Order();
         order.setPerson(owner);
@@ -82,7 +77,6 @@ public class OrderService {
         if (hasAddress) {
             var address = addressRepository.findById(req.getAddressId())
                     .orElseThrow(() -> new EntityNotFoundException("Address not found: " + req.getAddressId()));
-            // при желании: проверить принадлежность адреса пользователю
             order.setAddress(address);
         } else {
             var pickup = pickupLocationRepository.findById(req.getPickupLocationId())

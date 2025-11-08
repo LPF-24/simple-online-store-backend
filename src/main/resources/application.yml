@@ -14,7 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate # ⬅ Проверять схему, но не пересоздавать её. update - создает таблицы, если их нет
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:

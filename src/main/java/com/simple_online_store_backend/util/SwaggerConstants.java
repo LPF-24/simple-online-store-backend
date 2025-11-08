@@ -3,15 +3,15 @@ package com.simple_online_store_backend.util;
 public class SwaggerConstants {
     // Common constants for several entities.
     public static final String ID_DESC = "Unique identifier of the ";
-    public static final String ID_EXAMPLE = "42";
+    public static final String ID_EXAMPLE = "1";
 
     // Constants for classes related to the Person entity.
     public static final String USERNAME_DESC = "Username of the person";
-    public static final String USERNAME_EXAMPLE = "admin";
+    public static final String USERNAME_EXAMPLE = "user";
 
     public static final String PASSWORD_DESC = "Password (min 8 characters, max 30 characters, " +
             "the first letter is capitalized, contains one digit, one special character and does not contain spaces)";
-    public static final String PASSWORD_EXAMPLE = "ChangeMe_123!";
+    public static final String PASSWORD_EXAMPLE = "user123!";
 
     public static final String DATE_OF_BIRTH_DESC = "Date of birth (the minimum number of full years for registration is 14)";
     public static final String DATE_OF_BIRTH_EXAMPLE = "2000-01-01";
@@ -48,5 +48,45 @@ public class SwaggerConstants {
     public static final String POSTAL_CODE_DESC = "Postal code is required for postal delivery";
     public static final String POSTAL_CODE_EXAMPLE = "1234";
 
+    // Constants for OrderCreateRequest
+    public static final String ORDER_PRODUCT_IDS_DESC =
+            "List of product IDs in the order (minimum one item, each ID >= 1)";
+    public static final String ORDER_PRODUCT_IDS_EXAMPLE = "[1, 2, 3]";
 
+    public static final String ORDER_ADDRESS_ID_DESC =
+            "Delivery address ID. Please specify either addressId or pickupLocationId (if both are omitted, the request will be rejected by business validation).";
+    public static final String ORDER_PICKUP_LOCATION_ID_DESC =
+            "Pickup location ID. Please enter either pickupLocationId or addressId.";
+
+    // --- For OrderDetailsResponse ---
+    public static final String ORDER_STATUS_DESC =
+            "Order status (enum).";
+    public static final String ORDER_OWNER_ID_DESC =
+            "Order owner (user) ID.";
+    public static final String ORDER_OWNER_USERNAME_DESC =
+            "The username of the order owner.";
+    public static final String ORDER_ADDRESS_DESC =
+            "Delivery address (if ordering with delivery). May be null if pickup is selected.";
+    public static final String ORDER_PICKUP_DESC =
+            "Pickup location (if ordering for pickup). May be null if delivery is selected.";
+    public static final String ORDER_ITEMS_DESC =
+            "Order items (minimum one item).";
+
+    // --- For OrderItemResponse ---
+    public static final String PRODUCT_ID_DESC =
+            "Unique identifier of the product included in the order.";
+    public static final String PRODUCT_NAME_DESC =
+            "Name of the product.";
+    public static final String PRODUCT_NAME_EXAMPLE = "Wireless Headphones";
+    public static final String PRODUCT_PRICE_DESC =
+            "Unit price of the product in the order.";
+    public static final String PRODUCT_PRICE_EXAMPLE = "99.99";
+    public static final String PRODUCT_QUANTITY_DESC =
+            "Quantity of the given product within the order.";
+    public static final String PRODUCT_QUANTITY_EXAMPLE = "2";
+
+    // --- For OrderListItemResponse ---
+    public static final String ORDER_PRODUCT_COUNT_DESC =
+            "Number of products included in the order.";
+    public static final String ORDER_PRODUCT_COUNT_EXAMPLE = "3";
 }

@@ -1,14 +1,38 @@
 package com.simple_online_store_backend.dto.order;
 
+import com.simple_online_store_backend.util.SwaggerConstants;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.math.BigDecimal;
 
+@Schema(name = "OrderItemResponse", description = "Represents a single item within an order")
 public class OrderItemResponse {
+
+    @Schema(
+            description = SwaggerConstants.PRODUCT_ID_DESC,
+            example = SwaggerConstants.ID_EXAMPLE,
+            minimum = "1"
+    )
     private Integer productId;
 
-    private String  productName;
+    @Schema(
+            description = SwaggerConstants.PRODUCT_NAME_DESC,
+            example = SwaggerConstants.PRODUCT_NAME_EXAMPLE
+    )
+    private String productName;
 
+    @Schema(
+            description = SwaggerConstants.PRODUCT_PRICE_DESC,
+            example = SwaggerConstants.PRODUCT_PRICE_EXAMPLE,
+            minimum = "0.01"
+    )
     private BigDecimal price;
 
+    @Schema(
+            description = SwaggerConstants.PRODUCT_QUANTITY_DESC,
+            example = SwaggerConstants.PRODUCT_QUANTITY_EXAMPLE,
+            minimum = "1"
+    )
     private Integer quantity;
 
     public Integer getProductId() { return productId; }

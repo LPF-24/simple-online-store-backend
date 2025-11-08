@@ -29,10 +29,6 @@ public class OrderMapper {
         this.pickupLocationMapper = pickupLocationMapper;
     }
 
-    public Order mapRequestToOrder(OrderRequestDTO dto) {
-        return modelMapper.map(dto, Order.class);
-    }
-
     public OrderResponseDTO mapEntityToResponse(Order order) {
         OrderResponseDTO dto = new OrderResponseDTO();
 

@@ -1,25 +1,47 @@
 package com.simple_online_store_backend.validation.validator;
 
-import com.simple_online_store_backend.dto.order.OrderRequestDTO;
+import com.simple_online_store_backend.dto.order.OrderCreateRequest;
 import com.simple_online_store_backend.validation.annotation.ValidDeliveryOption;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class OrderDeliveryValidator implements ConstraintValidator<ValidDeliveryOption, OrderRequestDTO> {
-    @Override
-    public boolean isValid(OrderRequestDTO dto, ConstraintValidatorContext context) {
-        if (dto.getPickupLocation() != null && dto.getAddress() != null) {
-            context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate(
-                    "Cannot use both delivery types at once — choose only one"
-            ).addPropertyNode("pickupLocation").addConstraintViolation();
+public class OrderDeliveryValidator implements ConstraintValidator<ValidDeliveryOption, OrderCreateRequest> {
 
-            context.buildConstraintViolationWithTemplate(
-                    "Cannot use both delivery types at once — choose only one"
-            ).addPropertyNode("address").addConstraintViolation();
-            return false;
+    @Override
+    public boolean isValid(OrderCreateRequest dto, ConstraintValidatorContext context) {
+        if (dto == null) return true;
+
+        Integer addressId = dto.getAddressId();
+        Integer pickupLocationId = dto.getPickupLocationId();
+
+        boolean hasAddress = addressId != null;
+        boolean hasPickup  = pickupLocationId != null;
+
+        if (hasAddress ^ hasPickup) {
+            return true;
         }
 
-        return true;
+        context.disableDefaultConstraintViolation();
+
+        if (hasAddress && hasPickup) {
+            // оба заданы — ошибка на оба поля
+            context.buildConstraintViolationWithTemplate(
+                    "Cannot use both delivery types at once — choose only one"
+            ).addPropertyNode("addressId").addConstraintViolation();
+
+            context.buildConstraintViolationWithTemplate(
+                    "Cannot use both delivery types at once — choose only one"
+            ).addPropertyNode("pickupLocationId").addConstraintViolation();
+        } else {
+            context.buildConstraintViolationWithTemplate(
+                    "One of the delivery options is required: addressId or pickupLocationId"
+            ).addPropertyNode("addressId").addConstraintViolation();
+
+            context.buildConstraintViolationWithTemplate(
+                    "One of the delivery options is required: addressId or pickupLocationId"
+            ).addPropertyNode("pickupLocationId").addConstraintViolation();
+        }
+
+        return false;
     }
 }

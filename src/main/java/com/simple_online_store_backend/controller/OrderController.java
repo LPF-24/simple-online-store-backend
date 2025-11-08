@@ -380,6 +380,8 @@ public class OrderController {
 
             **400 VALIDATION_ERROR / MESSAGE_NOT_READABLE:**
             - Send invalid/incomplete JSON or both addressId & pickupLocationId → `400`.
+            - Instead of addressId or pickupLocationId, null → `400`.
+            - The request contains both addressId and pickupLocationId → `400`.
 
             **401 UNAUTHORIZED:**
             - No token / broken token → `401`.
@@ -535,7 +537,7 @@ public class OrderController {
                                     {
                                       "status": 400,
                                       "code": "VALIDATION_ERROR",
-                                      "message": "Either addressId or pickupLocationId must be provided (but not both)",
+                                      "message": "pickupLocationId - Cannot use both delivery types at once — choose only one;addressId - Cannot use both delivery types at once — choose only one;",
                                       "path": "/orders/create-order"
                                     }"""),
                                     @ExampleObject(name = "MESSAGE_NOT_READABLE", value = """
