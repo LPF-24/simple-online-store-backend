@@ -136,7 +136,6 @@ class DevRoleControllerTests {
                     .andExpect(jsonPath("$.path").value("/auth/dev/_demote"));
         }*/
 
-        // ============ 500 INTERNAL_SERVER_ERROR: эмуляция падения сервиса ============
         @Test
         void demote_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
@@ -158,7 +157,6 @@ class DevRoleControllerTests {
             }
         }
 
-        // ============ 404 NOT_FOUND: когда флаг выключен, контроллер не создаётся ============
         /*@Test
         void demote_notAvailable_whenFeatureFlagDisabled() throws Exception {
             mvc.perform(patch("/auth/dev/_demote").param("username", "any").accept(MediaType.APPLICATION_JSON))

@@ -24,7 +24,6 @@ public class OrderDeliveryValidator implements ConstraintValidator<ValidDelivery
         context.disableDefaultConstraintViolation();
 
         if (hasAddress && hasPickup) {
-            // оба заданы — ошибка на оба поля
             context.buildConstraintViolationWithTemplate(
                     "Cannot use both delivery types at once — choose only one"
             ).addPropertyNode("addressId").addConstraintViolation();

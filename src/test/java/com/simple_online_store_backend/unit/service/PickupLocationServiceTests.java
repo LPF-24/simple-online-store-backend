@@ -27,8 +27,6 @@ class PickupLocationServiceTests {
 
     @InjectMocks PickupLocationService pickupLocationService;
 
-    // ---------- getAllPickupLocations
-
     @Test
     void getAllPickupLocations_adminGetsAll() {
         PickupLocation a = active(true);
@@ -62,8 +60,6 @@ class PickupLocationServiceTests {
         verify(pickupLocationRepository).findByActiveTrue();
     }
 
-    // ---------- addPickupLocation
-
     @Test
     void addPickupLocation_throwsWhenExists() {
         var dto = req("City", "Street", "1");
@@ -84,7 +80,7 @@ class PickupLocationServiceTests {
         )).thenReturn(false);
 
         PickupLocation mapped = new PickupLocation();
-        mapped.setActive(null); // сервис должен поставить true
+        mapped.setActive(null);
         when(mapper.mapRequestTOPickupLocation(dto)).thenReturn(mapped);
 
         PickupLocationResponseDTO resp = new PickupLocationResponseDTO();
@@ -96,8 +92,6 @@ class PickupLocationServiceTests {
         assertTrue(mapped.getActive());
         verify(pickupLocationRepository).save(mapped);
     }
-
-    // ---------- closePickupLocation
 
     @Test
     void closePickupLocation_ok_whenActive() {
@@ -127,8 +121,6 @@ class PickupLocationServiceTests {
         assertThrows(ValidationException.class, () -> pickupLocationService.closePickupLocation(5));
     }
 
-    // ---------- openPickupLocation
-
     @Test
     void openPickupLocation_ok_whenExistsAndClosed() {
         PickupLocation loc = active(false);
@@ -154,8 +146,6 @@ class PickupLocationServiceTests {
         when(pickupLocationRepository.existsByIdAndActiveTrue(7)).thenReturn(true);
         assertThrows(ValidationException.class, () -> pickupLocationService.openPickupLocation(7));
     }
-
-    // ---------- updatePickupLocation
 
     @Test
     void updatePickupLocation_copiesOnlyNonNull_andSaves() {
@@ -190,8 +180,6 @@ class PickupLocationServiceTests {
         assertThrows(EntityNotFoundException.class,
                 () -> pickupLocationService.updatePickupLocation(new PickupLocationRequestDTO(), 10));
     }
-
-    // ---------- helpers
 
     private PickupLocation active(boolean flag) {
         PickupLocation p = new PickupLocation();

@@ -177,7 +177,6 @@ class RefreshDemoHelpersControllerTests {
         @Test
         void issueForUnknown_permitAll_returns200_andSetsCookie() throws Exception {
             mvc.perform(post("/auth/refresh-dev/_issue-for-unknown")
-                            // без параметра, берётся defaultValue из контроллера
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))

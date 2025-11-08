@@ -24,7 +24,7 @@ class CorsIT {
                         .header("Origin", "http://localhost:3000")
                         .header("Access-Control-Request-Method", "GET")
                         .header("Access-Control-Request-Headers", "authorization,content-type"))
-                .andExpect(status().isOk()) // или isNoContent()
+                .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin",
                         org.hamcrest.Matchers.anyOf(
                                 org.hamcrest.Matchers.is("*"),

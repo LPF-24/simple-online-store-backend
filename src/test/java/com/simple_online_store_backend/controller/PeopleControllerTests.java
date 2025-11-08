@@ -68,7 +68,6 @@ public class PeopleControllerTests {
         @Test
         @WithMockUser(roles = "ADMIN")
         void getAllCustomers_asAdmin_returnsOnlyRoleUser_and200() throws Exception {
-            // given: в БД есть два обычных пользователя и один админ
             savePerson("alice", "alice@test.io", "ROLE_USER", LocalDate.of(1990, 1, 1), "+49-111", false, "Test234");
             savePerson("bob", "bob@test.io", "ROLE_USER", LocalDate.of(1992, 2, 2), "+49-222", false, "Test234");
             savePerson("charlie", "charlie@test.io", "ROLE_ADMIN", LocalDate.of(1985, 3, 3), "+49-333", false, "Test234");
@@ -76,17 +75,13 @@ public class PeopleControllerTests {
             // when/then
             mockMvc.perform(get("/people/all-customers").accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    // возвращается только два клиента с ROLE_USER
                     .andExpect(jsonPath("$", hasSize(2)))
-                    // проверка структуры DTO (важные поля присутствуют)
                     .andExpect(jsonPath("$[*].id", everyItem(notNullValue())))
                     .andExpect(jsonPath("$[*].userName", containsInAnyOrder("alice", "bob")))
                     .andExpect(jsonPath("$[*].email", containsInAnyOrder("alice@test.io", "bob@test.io")))
                     .andExpect(jsonPath("$[*].role", everyItem(is("ROLE_USER"))))
-                    // доп. поля DTO, если они маппятся (dateOfBirth/phoneNumber); если в маппере их нет, эти проверки можно убрать
                     .andExpect(jsonPath("$[?(@.userName=='alice')].dateOfBirth", notNullValue()))
                     .andExpect(jsonPath("$[?(@.userName=='alice')].phoneNumber", notNullValue()))
-                    // убеждаемся, что чувствительных полей (например, password) нет
                     .andExpect(jsonPath("$[*].password").doesNotExist());
         }
 
@@ -120,27 +115,23 @@ public class PeopleControllerTests {
         @Test
         @DisplayName("deactivateAccount: 200 OK, user marked deleted, PENDING/PROCESSING orders -> CANCELLED")
         void deactivateAccount_success_marksUserDeleted_andCancelsOpenOrders() throws Exception {
-            // given: пользователь + 3 заказа (PENDING, PROCESSING, CANCELLED)
             Person user = savePerson("alice", "alice@test.io", "ROLE_USER", LocalDate.of(1990,1,1), "+49-111", false, "pwd");
             saveOrder(user, OrderStatus.PENDING);
             saveOrder(user, OrderStatus.PROCESSING);
             saveOrder(user, OrderStatus.CANCELLED);
 
-            // аутентифицируемся как этот пользователь (контроллер кастует к PersonDetails) :contentReference[oaicite:1]{index=1}
             UserDetails principal = new PersonDetails(user);
 
             // when/then
             mockMvc.perform(patch("/people/deactivate-account")
-                            .with(user(principal)) // кладём PersonDetails в SecurityContext
+                            .with(user(principal))
                             .accept(MediaType.TEXT_PLAIN))
                     .andExpect(status().isOk())
-                    .andExpect(content().string(containsString("Account has been deactivated."))); // контроллер возвращает String :contentReference[oaicite:2]{index=2}
+                    .andExpect(content().string(containsString("Account has been deactivated.")));
 
-            // verify: пользователь помечен удалённым
             Person reloaded = peopleRepository.findById(user.getId()).orElseThrow();
             assertTrue(reloaded.getDeleted(), "User must be marked as deleted");
 
-            // verify: открытые заказы отменены, прочие не тронуты (сервисная логика) :contentReference[oaicite:3]{index=3}
             var orders = orderRepository.findByPerson(reloaded);
             long cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
             long processing = orders.stream().filter(o -> o.getStatus() == OrderStatus.PROCESSING).count();
@@ -155,7 +146,6 @@ public class PeopleControllerTests {
         @Test
         @DisplayName("deactivateAccount: 401 UNAUTHORIZED for unauthenticated request")
         void deactivateAccount_unauthenticated_returns401() throws Exception {
-            // no auth at all → JWTFilter отдаст 401 (эндпоинт не в whitelist)
             mockMvc.perform(patch("/people/deactivate-account"))
                     .andExpect(status().isUnauthorized());
         }
@@ -173,13 +163,13 @@ public class PeopleControllerTests {
 
             mockMvc.perform(patch("/people/restore-account")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .accept(MediaType.APPLICATION_JSON) // было TEXT_PLAIN
+                            .accept(MediaType.APPLICATION_JSON)
                             .content("""
             {"username":"%s","password":"%s"}
         """.formatted(username, rawPassword)))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)) // было TEXT_PLAIN
-                    .andExpect(content().string("Account successfully restored")); // или containsString(...)
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(content().string("Account successfully restored"));
 
             var refreshed = peopleRepository.findById(user.getId()).orElseThrow();
             assertFalse(refreshed.getDeleted(), "User must be unlocked (deleted=false) after restore");
@@ -206,7 +196,6 @@ public class PeopleControllerTests {
         @Test
         @DisplayName("restore-account: 500 INTERNAL_ERROR — account already active")
         void restoreAccount_alreadyActive_500() throws Exception {
-            // given: пользователь уже активен (deleted=false)
             String username = "charlie";
             savePerson(username, "charlie@test.io", "ROLE_USER", LocalDate.of(1985, 3, 3), "+49-333", false, "Test234");
 
@@ -230,7 +219,6 @@ public class PeopleControllerTests {
         void getProfile_ok_returnsCurrentUser() throws Exception {
             Person alice = savePerson("alice", "alice@test.io", "ROLE_USER",
                     LocalDate.of(1990,1,1), "+49-111", false, "Secret123!");
-            // второй пользователь просто для контекста
             savePerson("bob", "bob@test.io", "ROLE_USER",
                     LocalDate.of(1992,2,2), "+49-222", false, "Secret123!");
 
@@ -258,12 +246,10 @@ public class PeopleControllerTests {
         @Test
         @DisplayName("profile: 423 ACCOUNT_LOCKED — deactivated user with valid access token")
         void getProfile_locked_423() throws Exception {
-            // given: в БД есть заблокированный пользователь
             String username = "alice";
             savePerson(username, "alice@test.io", "ROLE_USER",
                     LocalDate.of(1990,1,1), "+49-111", /*deleted=*/ true, "Secret123!");
 
-            // и валидный access token, который фильтр примет как принадлежащий alice
             String accessToken = "ACCESS.ALICE";
             DecodedJWT decoded = mock(DecodedJWT.class);
             Claim usernameClaim = mock(Claim.class);
@@ -271,7 +257,6 @@ public class PeopleControllerTests {
             when(decoded.getClaim("username")).thenReturn(usernameClaim);
             when(jwtUtil.validateToken(accessToken)).thenReturn(decoded);
 
-            // when/then: запрос идёт через JWTFilter → аккаунт помечен deleted=true → 423
             mockMvc.perform(get("/people/profile")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                             .accept(MediaType.APPLICATION_JSON))
@@ -286,10 +271,6 @@ public class PeopleControllerTests {
 
     @Nested
     class methodPromoteTests {
-        // ВАРИАНТ 1 (проще): если можно – добавьте на ВЕСЬ класс PeopleControllerTests:
-// @TestPropertySource(properties = "admin.registration.code=MASTER-CODE")
-
-// ВАРИАНТ 2: если нельзя менять аннотации класса – добавьте внутрь PeopleControllerTests:
 /*
 @DynamicPropertySource
 static void registerProps(DynamicPropertyRegistry registry) {
@@ -320,7 +301,6 @@ static void registerProps(DynamicPropertyRegistry registry) {
                         .andExpect(jsonPath("$.message")
                                 .value("You have been successfully promoted to administrator. Please log in again, colleague."));
 
-                // verify: роль обновлена в БД
                 Person refreshed = peopleRepository.findById(alice.getId()).orElseThrow();
                 org.assertj.core.api.Assertions.assertThat(refreshed.getRole()).isEqualTo("ROLE_ADMIN");
             }
@@ -364,7 +344,7 @@ static void registerProps(DynamicPropertyRegistry registry) {
         Order o = new Order();
         o.setPerson(person);
         o.setStatus(status);
-        return orderRepository.save(o); // реальный репозиторий заказов :contentReference[oaicite:6]{index=6}
+        return orderRepository.save(o);
     }
 
     private Person savePerson(String userName, String email, String role,
@@ -377,7 +357,7 @@ static void registerProps(DynamicPropertyRegistry registry) {
         p.setDateOfBirth(dob);
         p.setPhoneNumber(phone);
         p.setDeleted(deleted);
-        p.setPassword(passwordEncoder.encode(rawPassword)); // ← важно
+        p.setPassword(passwordEncoder.encode(rawPassword));
         return peopleRepository.save(p);
     }
 }

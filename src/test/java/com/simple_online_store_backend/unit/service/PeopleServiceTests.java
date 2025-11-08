@@ -79,7 +79,6 @@ class PeopleServiceTests {
         PersonResponseDTO result = peopleService.register(req);
 
         assertEquals("ROLE_ADMIN", result.getRole());
-        // удостоверимся, что перед сохранением проставили нужную роль
         assertEquals("ROLE_ADMIN", saved.getRole());
         verify(peopleRepository).saveAndFlush(personToSave);
     }

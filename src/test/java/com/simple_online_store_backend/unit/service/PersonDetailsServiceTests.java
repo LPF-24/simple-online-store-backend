@@ -45,7 +45,6 @@ class PersonDetailsServiceTests {
         assertTrue(details instanceof PersonDetails);
         assertEquals("john", details.getUsername());
         assertEquals("ENC", details.getPassword());
-        // при желании можно проверить роль, если PersonDetails её маппит в GrantedAuthority:
         // assertTrue(details.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
 
         verify(peopleRepository).findByUserName("john");

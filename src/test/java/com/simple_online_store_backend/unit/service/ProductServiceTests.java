@@ -133,7 +133,7 @@ class ProductServiceTests {
         when(productRepository.findById(id)).thenReturn(Optional.of(product(id, "X", true, "1.00")));
 
         ProductUpdateDTO patch = new ProductUpdateDTO();
-        patch.setProductName("   "); // станет пустым
+        patch.setProductName("   ");
 
         assertThrows(ValidationException.class, () -> productService.editProduct(patch, id));
         verify(productRepository, never()).save(any());

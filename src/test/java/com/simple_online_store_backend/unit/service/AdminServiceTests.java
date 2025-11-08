@@ -69,7 +69,7 @@ class AdminServiceTests {
 
         assertEquals(0, result.size());
         verify(orderRepository).findAll();
-        verifyNoInteractions(orderMapper); // нечего маппить
+        verifyNoInteractions(orderMapper);
     }
 }
 

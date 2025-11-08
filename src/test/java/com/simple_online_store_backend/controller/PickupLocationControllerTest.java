@@ -88,7 +88,6 @@ class PickupLocationControllerTest {
     @Nested
     class methodGetAllPickupLocations {
 
-        // ============ 200 OK: ADMIN видит все записи (active и inactive) ============
         @Test
         void getAll_admin_seesAll_returns200() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -107,7 +106,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$[?(@.id==" + active.getId() + ")].city").value(hasItem("Berlin")));
         }
 
-        // ============ 200 OK: USER видит только активные записи ============
         @Test
         void getAll_user_seesOnlyActive_returns200() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -127,7 +125,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$[0].houseNumber").value("1A"));
         }
 
-        // ============ 200 OK: пустая БД → [] ============
         @Test
         void getAll_empty_returnsEmptyArray() throws Exception {
             var user = saveUser("ghost", "ghost@example.com", "ROLE_USER");
@@ -139,7 +136,6 @@ class PickupLocationControllerTest {
                     .andExpect(content().json("[]"));
         }
 
-        // ============ 401 UNAUTHORIZED: без аутентификации ============
         @Test
         void getAll_unauthorized_returns401() throws Exception {
             mvc.perform(get("/pickup/all-pickup-location")
@@ -155,13 +151,11 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/all-pickup-location"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ============
         @Test
         void getAll_serviceThrows_returns500() throws Exception {
             var user = saveUser("nick", "nick@example.com", "ROLE_USER");
             var token = auth(user);
 
-            // Контроллер берёт роль из SecurityContext → положим туда токен
             SecurityContextHolder.getContext().setAuthentication(token);
             try {
                 doThrow(new RuntimeException("DB down"))
@@ -183,7 +177,6 @@ class PickupLocationControllerTest {
     @Nested
     class methodAddPickupLocation {
 
-        // ============ 200 OK: ADMIN создаёт новую точку самовывоза ============
         @Test
         void add_admin_valid_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -200,7 +193,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.street").value("Main"))
                     .andExpect(jsonPath("$.houseNumber").value("1A"));
 
-            // убедимся, что запись реально появилась в БД
             var all = pickupLocationRepository.findAll();
             Assertions.assertEquals(1, all.size());
             PickupLocation saved = all.get(0);
@@ -209,7 +201,6 @@ class PickupLocationControllerTest {
             Assertions.assertEquals("1A", saved.getHouseNumber());
         }
 
-        // ============ 403 FORBIDDEN: USER не имеет прав (PreAuthorize в сервисе) ============
         @Test
         void add_user_forbidden_returns403() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -231,7 +222,6 @@ class PickupLocationControllerTest {
             }
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ============
         @Test
         void add_unauthorized_returns401() throws Exception {
             mvc.perform(post("/pickup/add-pickup-location")
@@ -249,12 +239,10 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/add-pickup-location"));
         }
 
-        // ============ 400 BAD_REQUEST: валидация DTO (city/street/houseNumber) ============
         @Test
         void add_invalidBody_returns400_withValidationErrors() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
 
-            // нарушим все три поля: пустые значения
             mvc.perform(post("/pickup/add-pickup-location")
                             .with(authentication(auth(admin)))
                             .contentType(MediaType.APPLICATION_JSON)
@@ -267,7 +255,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/add-pickup-location"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал во время сохранения ============
         @Test
         void add_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
@@ -297,7 +284,6 @@ class PickupLocationControllerTest {
     @Nested
     class methodClosePickupLocation {
 
-        // ============ 200 OK: ADMIN закрывает существующую точку ==========
         @Test
         void close_admin_existing_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -310,12 +296,10 @@ class PickupLocationControllerTest {
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").value("Pick-up location with id " + location.getId() + " closed."));
 
-            // убедимся, что запись реально стала неактивной
             var updated = pickupLocationRepository.findById(location.getId()).orElseThrow();
             Assertions.assertFalse(updated.getActive(), "location must be inactive after close");
         }
 
-        // ============ 403 FORBIDDEN: USER не имеет прав ==========
         @Test
         void close_user_forbidden_returns403_andDoesNotChangeEntity() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -332,7 +316,6 @@ class PickupLocationControllerTest {
                         .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))))
                         .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/close-pick-up-location"));
 
-                // состояние не должно меняться
                 var same = pickupLocationRepository.findById(location.getId()).orElseThrow();
                 Assertions.assertTrue(same.getActive(), "location must remain active for ROLE_USER");
             } finally {
@@ -340,7 +323,6 @@ class PickupLocationControllerTest {
             }
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ==========
         @Test
         void close_unauthorized_returns401() throws Exception {
             var location = saveLocation("Berlin", "Main", "1A", true);
@@ -358,7 +340,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/close-pick-up-location"));
         }
 
-        // ============ 404 NOT FOUND: несуществующий id ==========
         @Test
         void close_admin_notFound_returns404() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -374,7 +355,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + missingId + "/close-pick-up-location"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ==========
         @Test
         void close_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
@@ -403,7 +383,6 @@ class PickupLocationControllerTest {
     @Nested
     class methodOpenPickupLocation {
 
-        // ============ 200 OK: ADMIN открывает существующую закрытую точку ==========
         @Test
         void open_admin_existingClosed_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -416,12 +395,10 @@ class PickupLocationControllerTest {
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").value("Pick-up location with id " + location.getId() + " successfully open."));
 
-            // убедимся, что запись реально стала активной
             var updated = pickupLocationRepository.findById(location.getId()).orElseThrow();
             Assertions.assertTrue(updated.getActive(), "location must be active after open");
         }
 
-        // ============ 400 BAD REQUEST: уже открыта ==========
         @Test
         void open_admin_alreadyOpen_returns400_andDoesNotChangeEntity() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -440,7 +417,6 @@ class PickupLocationControllerTest {
             Assertions.assertTrue(same.getActive(), "location must remain active if already open");
         }
 
-        // ============ 403 FORBIDDEN: USER не имеет прав ==========
         @Test
         void open_user_forbidden_returns403_andDoesNotChangeEntity() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -464,7 +440,6 @@ class PickupLocationControllerTest {
             }
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ==========
         @Test
         void open_unauthorized_returns401() throws Exception {
             var location = saveLocation("Berlin", "Main", "1A", false);
@@ -482,7 +457,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/open-pick-up-location"));
         }
 
-        // ============ 404 NOT FOUND: несуществующий id ==========
         @Test
         void open_admin_notFound_returns404() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -498,14 +472,12 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + missingId + "/open-pick-up-location"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ==========
         @Test
         void open_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
             var token = auth(admin);
             var location = saveLocation("Berlin", "Main", "1A", false);
 
-            // @PreAuthorize → перед стаббингом кладём токен в SecurityContext
             SecurityContextHolder.getContext().setAuthentication(token);
             try {
                 doThrow(new RuntimeException("DB down"))
@@ -528,7 +500,6 @@ class PickupLocationControllerTest {
     @Nested
     class methodUpdatePickupLocation {
 
-        // ============ 200 OK (PATCH): ADMIN обновляет существующую точку ============
         @Test
         void update_admin_patch_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -551,7 +522,7 @@ class PickupLocationControllerTest {
             Assertions.assertEquals("Kaufingerstr.", updated.getStreet());
             Assertions.assertEquals("12", updated.getHouseNumber());
         }
-        // ============ 400 BAD_REQUEST: валидация DTO ==========
+
         @Test
         void update_invalidBody_returns400() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -568,7 +539,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/update-pick-up-location"));
         }
 
-        // ============ 403 FORBIDDEN: USER не имеет прав ==========
         @Test
         void update_user_forbidden_returns403_andNotChanged() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -596,7 +566,6 @@ class PickupLocationControllerTest {
             }
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ==========
         @Test
         void update_unauthorized_returns401() throws Exception {
             var location = saveLocation("Berlin", "Main", "1A", true);
@@ -616,7 +585,6 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + location.getId() + "/update-pick-up-location"));
         }
 
-        // ============ 404 NOT FOUND: несуществующий id ==========
         @Test
         void update_notFound_returns404() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -634,14 +602,12 @@ class PickupLocationControllerTest {
                     .andExpect(jsonPath("$.path").value("/pickup/" + missingId + "/update-pick-up-location"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ==========
         @Test
         void update_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
             var token = auth(admin);
             var location = saveLocation("Berlin", "Main", "1A", true);
 
-            // Метод под @PreAuthorize → положим auth заранее в SecurityContext
             SecurityContextHolder.getContext().setAuthentication(token);
             try {
                 doThrow(new RuntimeException("DB down"))

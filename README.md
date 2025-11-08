@@ -1,4 +1,4 @@
-# 🛒 Simple Online Store Backend
+# 🛒 Online Store Backend
 
 This is the backend part of a Java-based online store with role-based authorization, JWT-based session handling, and Redis-backed refresh token rotation.
 
@@ -6,10 +6,9 @@ The application follows a clean layered architecture with clear separation of co
 
 RESTful APIs are documented using OpenAPI and can be explored interactively via Swagger UI.
 
-## ⚠️ Important Note / Project status
-This project previously used Lombok and JPMS modules, which caused build-time issues.
-A refactoring is planned to make the project fully runnable without modular conflicts.
-The purpose of this repository is to demonstrate architectural decisions and domain modeling.
+## 🟢 Project Status
+✅ **Completed and fully functional.**  
+The application can be run via Docker Compose and includes working authentication, order management, and admin features.
 
 ## 🚀 Technologies Used
 
@@ -20,7 +19,10 @@ The purpose of this repository is to demonstrate architectural decisions and dom
 - PostgreSQL
 - Redis
 - Docker & Docker Compose
-- OpenAPI / Swagger UI
+- OpenAPI / Swagger
+- JUnit 5
+- Mockito
+- Spring Boot Test, MockMvc
 
 ## 📦 Features
 
@@ -35,11 +37,11 @@ The purpose of this repository is to demonstrate architectural decisions and dom
 ## 🐳 Run with Docker
 
 ```bash
-docker-compose up --build
+docker-compose up -d --build
 ```
 
 - Backend: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 
 ## 👥 Sample Accounts
 
@@ -78,25 +80,17 @@ Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-  "productsIds": [1, 2],
-  "pickupLocation": {
-    "city": "New York",
-    "street": "Main St",
-    "houseNumber": "10A"
-  }
+"productIds": [1, 2],
+"addressId": 1
 }
 ```
 
-## 📚 Documentation
+## 📚 API Documentation
+Full interactive documentation is available at:
 
-Interactive API available at:
-```
-http://localhost:8080/swagger-ui.html
-```
+👉 **[Swagger UI](http://localhost:8080/swagger-ui/index.html)**
 
-## ⚠️ Important Note / Project status
-A refactoring is planned to make the project fully runnable without modular conflicts.
-The purpose of this repository is to demonstrate architectural decisions and domain modeling.
+You can explore all endpoints, request/response schemas, and example payloads there.
 
 ## 👤 Author
 

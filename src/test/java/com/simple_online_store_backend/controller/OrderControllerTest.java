@@ -70,7 +70,7 @@ class OrderControllerTest {
     }
 
     private UsernamePasswordAuthenticationToken auth(Person p) {
-        var pd = new PersonDetails(p); // твой реальный principal с id/username/role
+        var pd = new PersonDetails(p);
         var ga = List.of(new SimpleGrantedAuthority(p.getRole()));
         return new UsernamePasswordAuthenticationToken(pd, null, ga);
     }
@@ -79,22 +79,18 @@ class OrderControllerTest {
         Order o = new Order();
         o.setPerson(owner);
         o.setStatus(status);
-        // при необходимости добавь address/pickup/products — маппер их поддерживает в DTO, но не обязательны для 200
         return orderRepository.save(o);
     }
 
     @Nested
     class methodAllOrdersByCustomer {
-        // ============ 1) 200 OK: пользователь видит свой список заказов ============
         @Test
         void allMyOrders_success_returnsList() throws Exception {
             Person user = saveUser("maria", "maria@example.com", "ROLE_USER");
             Person other = saveUser("john", "john@example.com", "ROLE_USER");
 
-            // заказы пользователя
             var o1 = order(user, OrderStatus.PENDING);
             var o2 = order(user, OrderStatus.CANCELLED);
-            // чужой заказ
             order(other, OrderStatus.PENDING);
 
             mvc.perform(get("/orders/all-my-orders")
@@ -102,13 +98,11 @@ class OrderControllerTest {
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                    // ожидаем только 2 заказа текущего пользователя
                     .andExpect(jsonPath("$", hasSize(2)))
                     .andExpect(jsonPath("$[*].id", hasItems(o1.getId(), o2.getId())))
                     .andExpect(jsonPath("$[*].status", hasItems("PENDING", "CANCELLED")));
         }
 
-        // ============ 2) 200 OK: у пользователя пока нет заказов — пустой список ============
         @Test
         void allMyOrders_empty_returnsEmptyList() throws Exception {
             Person user = saveUser("empty", "empty@example.com", "ROLE_USER");
@@ -120,7 +114,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$", hasSize(0)));
         }
 
-        // ============ 3) 401 UNAUTHORIZED: нет аутентификации (без токена/принципала) ============
         @Test
         void allMyOrders_unauthorized_returns401() throws Exception {
             mvc.perform(get("/orders/all-my-orders").accept(MediaType.APPLICATION_JSON))
@@ -135,7 +128,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/all-my-orders"));
         }
 
-        // ============ 4) 403 FORBIDDEN: роль ADMIN (метод в сервисе требует hasRole('ROLE_USER')) ============
         @Test
         void allMyOrders_forbidden_admin_returns403() throws Exception {
             Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -149,7 +141,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/all-my-orders"));
         }
 
-        // ============ 5) 500 INTERNAL_SERVER_ERROR: сервис упал ============
         @Test
         void allMyOrders_serviceThrows_returns500() throws Exception {
             Person user = saveUser("kate", "kate@example.com", "ROLE_USER");
@@ -176,7 +167,6 @@ class OrderControllerTest {
 
     @Nested
     class methodGetOrderTests {
-        // ===== 200: владелец читает свой заказ =====
         @Test
         void getOrder_ownerUser_returns200() throws Exception {
             Person owner = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -190,7 +180,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.status").value("PENDING"));
         }
 
-        // ===== 200: админ может читать любой заказ =====
         @Test
         void getOrder_adminCanViewAnyOrder_returns200() throws Exception {
             Person owner = saveUser("john", "john@example.com", "ROLE_USER");
@@ -205,7 +194,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.status").value("CANCELLED"));
         }
 
-        // ===== 403: чужой заказ обычному пользователю запрещён =====
         @Test
         void getOrder_otherUser_returns403() throws Exception {
             Person owner = saveUser("kate", "kate@example.com", "ROLE_USER");
@@ -221,7 +209,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId()));
         }
 
-        // ===== 404: заказ не найден =====
         @Test
         void getOrder_notFound_returns404() throws Exception {
             Person user = saveUser("ghost", "ghost@example.com", "ROLE_USER");
@@ -236,10 +223,8 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/999999"));
         }
 
-        // ===== 401: нет аутентификации (без токена/принципала) =====
         @Test
         void getOrder_unauthorized_returns401() throws Exception {
-            // без .with(authentication(...))
             mvc.perform(get("/orders/{id}", 1).accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
@@ -251,14 +236,12 @@ class OrderControllerTest {
                     )));
         }
 
-        // ===== 500: сервис упал при обработке =====
         @Test
         void getOrder_serviceThrows_returns500() throws Exception {
             Person user = saveUser("peter", "peter@example.com", "ROLE_USER");
             Order ord = order(user, OrderStatus.PENDING);
 
             var authToken = auth(user);
-            // из-за @PreAuthorize на сервисе стабы через spy требуют аутентификацию в контексте
             SecurityContextHolder.getContext().setAuthentication(authToken);
             try {
                 doThrow(new RuntimeException("DB down"))
@@ -339,7 +322,6 @@ class OrderControllerTest {
             return r;
         }
 
-        // ===== 1) 200 OK: успешное создание (доставка по адресу) =====
         @Test
         void createOrder_success_withAddress_returns200() throws Exception {
             Person user = saveUser("maria", "maria@example.com", "ROLE_USER", false);
@@ -363,14 +345,11 @@ class OrderControllerTest {
             assertThat(orderRepository.count(), greaterThan(0L));
         }
 
-        // ===== 2) 200 OK: самовывоз (pickup), адрес не указан =====
         @Test
         void createOrder_success_withPickup_returns200() throws Exception {
             Person user = saveUser("nick", "nick@example.com", "ROLE_USER", false);
             Product p1 = saveProduct("Mouse", true, new BigDecimal("25.00"));
 
-            // тут можно использовать существующий pickup из сидера/БД; если его нет — пропусти тест или создай перед этим
-            // Для простоты используем addressId=null и pickupLocationId=1, если сидер создаёт его с id=1.
             var dto = req(List.of(p1.getId()), null, 1);
 
             mvc.perform(post("/orders/create-order")
@@ -384,7 +363,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.pickup").exists());
         }
 
-        // ===== 3) 400: пустой список productIds =====
         @Test
         void createOrder_validationError_emptyProducts_returns400() throws Exception {
             Person user = saveUser("kate", "kate@example.com", "ROLE_USER", false);
@@ -401,7 +379,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 4) 404: товар не существует (EntityNotFoundException) =====
         @Test
         void createOrder_productNotFound_returns400() throws Exception {
             Person user = saveUser("john", "john@example.com", "ROLE_USER", false);
@@ -419,7 +396,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 5) 400: товар недоступен (availability=false) =====
         @Test
         void createOrder_productUnavailable_returns400() throws Exception {
             Person user = saveUser("peter", "peter@example.com", "ROLE_USER", false);
@@ -438,7 +414,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 6) 400: аккаунт пользователя помечен как deleted =====
         @Test
         void createOrder_userDeleted_returns400() throws Exception {
             Person user = saveUser("blocked", "blocked@example.com", "ROLE_USER", true);
@@ -457,11 +432,10 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 7) 400: некорректный JSON (MESSAGE_NOT_READABLE) =====
         @Test
         void createOrder_malformedJson_returns400() throws Exception {
             Person user = saveUser("json", "json@example.com", "ROLE_USER", false);
-            String malformed = "{ \"productIds\": [1, 2], \"addressId\": 1 "; // обрываем JSON
+            String malformed = "{ \"productIds\": [1, 2], \"addressId\": 1 ";
 
             mvc.perform(post("/orders/create-order")
                             .with(authentication(auth(user)))
@@ -472,10 +446,8 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 8) 401: нет аутентификации =====
         @Test
         void createOrder_unauthorized_returns401() throws Exception {
-            // подготовим валидные ids, чтобы валидация не сработала раньше EntryPoint-а
             Product p1 = saveProduct("Keyboard", true, new BigDecimal("49.99"));
             Address addr = saveAddress("Berlin", "Main", "1", "1", "10115");
             var dto = req(List.of(p1.getId()), addr.getId(), null);
@@ -492,7 +464,6 @@ class OrderControllerTest {
                             equalTo("TOKEN_EXPIRED"))));
         }
 
-        // ===== 9) 403: роль ADMIN (эндпоинт только для ROLE_USER) =====
         @Test
         void createOrder_forbidden_admin_returns403() throws Exception {
             Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN", false);
@@ -511,7 +482,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 10) 404: адрес не найден =====
         @Test
         void createOrder_addressNotFound_returns404() throws Exception {
             Person user = saveUser("anna", "anna@example.com", "ROLE_USER", false);
@@ -530,7 +500,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 11) 404: пункт выдачи не найден =====
         @Test
         void createOrder_pickupNotFound_returns404() throws Exception {
             Person user = saveUser("olga", "olga@example.com", "ROLE_USER", false);
@@ -549,7 +518,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/create-order"));
         }
 
-        // ===== 12) 500: падение на сохранении заказа =====
         @Test
         void createOrder_serviceThrows_returns500() throws Exception {
             Person user = saveUser("fail", "fail@example.com", "ROLE_USER", false);
@@ -558,7 +526,6 @@ class OrderControllerTest {
 
             var dto = req(List.of(p1.getId()), addr.getId(), null);
 
-            // Роняем репозиторий при сохранении (после прохождения всех проверок сервиса)
             doThrow(new RuntimeException("DB down"))
                     .when(orderRepository)
                     .save(org.mockito.ArgumentMatchers.any(com.simple_online_store_backend.entity.Order.class));
@@ -587,7 +554,7 @@ class OrderControllerTest {
                 Product pr = new Product();
                 pr.setProductName("AdminList-" + i + "-" + System.nanoTime());
                 pr.setProductDescription("Some description");
-                pr.setProductCategory(ProductCategory.COMPONENTS); // <-- ВАЖНО: NOT NULL
+                pr.setProductCategory(ProductCategory.COMPONENTS);
                 pr.setPrice(new java.math.BigDecimal("10.00"));
                 pr.setAvailability(Boolean.TRUE);
                 products.add(productRepository.save(pr));
@@ -603,7 +570,6 @@ class OrderControllerTest {
             peopleRepository.deleteAll();
         }
 
-        // ===== 200 OK: админ видит список укороченных элементов =====
         @Test
         void getAllOrders_admin_success_returnsListItems() throws Exception {
             Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -631,7 +597,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$[?(@.id==" + o3.getId() + ")].status").value(hasItem("CANCELLED")));
         }
 
-        // ===== 200 OK: пустая БД → []
         @Test
         void getAllOrders_admin_empty_returnsEmptyArray() throws Exception {
             Person admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -643,11 +608,9 @@ class OrderControllerTest {
                     .andExpect(content().json("[]"));
         }
 
-        // ===== 403: доступ обычному пользователю запрещён
         @Test
         void getAllOrders_user_forbidden_returns403() throws Exception {
             Person user = saveUser("user", "user@example.com", "ROLE_USER");
-            // создадим один заказ для надёжности
             orderWithProducts(user, OrderStatus.PENDING, 1);
 
             mvc.perform(get("/orders")
@@ -659,7 +622,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders"));
         }
 
-        // ===== 401: без аутентификации
         @Test
         void getAllOrders_unauthorized_returns401() throws Exception {
             mvc.perform(get("/orders").accept(MediaType.APPLICATION_JSON))
@@ -678,7 +640,6 @@ class OrderControllerTest {
     @Nested
     class methodCancelOrderTests {
 
-        // ===== 200 OK: владелец (ROLE_USER) успешно отменяет PENDING-заказ =====
         @Test
         void cancelOrder_owner_success_returns200() throws Exception {
             Person owner = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -695,7 +656,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.person.userName").value(owner.getUserName()));
         }
 
-        // ===== 403 FORBIDDEN: другой пользователь пытается отменить чужой заказ =====
         @Test
         void cancelOrder_otherUser_forbidden_returns403() throws Exception {
             Person owner = saveUser("kate", "kate@example.com", "ROLE_USER");
@@ -711,7 +671,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/cancel-order"));
         }
 
-        // ===== 403 FORBIDDEN: админ не имеет права отменять чужие заказы как пользователь =====
         @Test
         void cancelOrder_admin_forbidden_returns403() throws Exception {
             Person owner = saveUser("john", "john@example.com", "ROLE_USER");
@@ -727,7 +686,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/cancel-order"));
         }
 
-        // ===== 400 VALIDATION_ERROR: отменяем не-PENDING заказ =====
         @Test
         void cancelOrder_notPending_validationError_returns400() throws Exception {
             Person owner = saveUser("anna", "anna@example.com", "ROLE_USER");
@@ -743,7 +701,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/cancel-order"));
         }
 
-        // ===== 404 ENTITY_NOT_FOUND: заказ не найден =====
         @Test
         void cancelOrder_notFound_returns404() throws Exception {
             Person user = saveUser("ghost", "ghost@example.com", "ROLE_USER");
@@ -758,7 +715,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + unknownId + "/cancel-order"));
         }
 
-        // ===== 401 UNAUTHORIZED: без аутентификации =====
         @Test
         void cancelOrder_unauthorized_returns401() throws Exception {
             mvc.perform(patch("/orders/{id}/cancel-order", 1)
@@ -777,7 +733,6 @@ class OrderControllerTest {
     @Nested
     class methodReactivateOrderTests {
 
-        // ===== 200 OK: владелец (ROLE_USER) успешно реактирует CANCELLED-заказ → PENDING =====
         @Test
         void reactivateOrder_owner_success_returns200() throws Exception {
             Person owner = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -794,7 +749,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.person.userName").value(owner.getUserName()));
         }
 
-        // ===== 403 FORBIDDEN: другой пользователь пытается реактировать чужой заказ =====
         @Test
         void reactivateOrder_otherUser_forbidden_returns403() throws Exception {
             Person owner = saveUser("kate", "kate@example.com", "ROLE_USER");
@@ -810,7 +764,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/reactivate-order"));
         }
 
-        // ===== 403 FORBIDDEN: админ не имеет права реактировать чужие заказы как пользователь =====
         @Test
         void reactivateOrder_admin_forbidden_returns403() throws Exception {
             Person owner = saveUser("john", "john@example.com", "ROLE_USER");
@@ -826,7 +779,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/reactivate-order"));
         }
 
-        // ===== 400 VALIDATION_ERROR: можно реактировать только CANCELLED → попытка для PENDING =====
         @Test
         void reactivateOrder_notCancelled_validationError_returns400() throws Exception {
             Person owner = saveUser("anna", "anna@example.com", "ROLE_USER");
@@ -842,7 +794,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + ord.getId() + "/reactivate-order"));
         }
 
-        // ===== 404 ENTITY_NOT_FOUND: заказ не найден =====
         @Test
         void reactivateOrder_notFound_returns404() throws Exception {
             Person user = saveUser("ghost", "ghost@example.com", "ROLE_USER");
@@ -857,7 +808,6 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.path").value("/orders/" + unknownId + "/reactivate-order"));
         }
 
-        // ===== 401 UNAUTHORIZED: без аутентификации =====
         @Test
         void reactivateOrder_unauthorized_returns401() throws Exception {
             mvc.perform(patch("/orders/{id}/reactivate-order", 1)

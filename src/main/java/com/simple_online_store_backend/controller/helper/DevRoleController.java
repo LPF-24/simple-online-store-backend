@@ -144,7 +144,7 @@ public class DevRoleController {
                     name = "username",
                     description = "Username to demote (default: 'user')",
                     required = true,
-                    example = "user" // ← предзаполнит поле в Swagger UI
+                    example = "user"
             )
             @RequestParam String username
     ) {

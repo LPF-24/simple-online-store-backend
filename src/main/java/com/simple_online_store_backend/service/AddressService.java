@@ -72,10 +72,9 @@ public class AddressService {
             throw new EntityNotFoundException("User has not yet specified any address");
         }
 
-        person.setAddress(null);  // отвязываем адрес от пользователя
+        person.setAddress(null);
         peopleRepository.save(person);
 
-        // Если этот адрес больше никем не используется, удаляем его из БД
         boolean usedByOthers = peopleRepository.existsByAddress(address);
         if (!usedByOthers) {
             addressRepository.delete(address);

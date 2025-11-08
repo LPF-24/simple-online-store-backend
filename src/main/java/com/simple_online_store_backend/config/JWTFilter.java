@@ -33,8 +33,6 @@ public class JWTFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATHS = new AntPathMatcher();
 
-    // Пути, где заголовок Authorization не обязателен (login/registration/refresh/logout и dev-варианты),
-    // а также Swagger/OpenAPI.
     private static final List<String> AUTH_WHITELIST = List.of(
             "/auth/login",
             "/auth/registration",
@@ -60,9 +58,8 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // Матчим по URI без contextPath, чтобы корректно работало в тестах и под контейнером
-        String context = request.getContextPath(); // например "/api" или ""
-        String uri = request.getRequestURI();      // например "/api/auth/logout" или "/auth/logout"
+        String context = request.getContextPath();
+        String uri = request.getRequestURI();
         String path = (context != null && !context.isEmpty() && uri.startsWith(context))
                 ? uri.substring(context.length())
                 : uri;
@@ -70,7 +67,7 @@ public class JWTFilter extends OncePerRequestFilter {
         for (String pat : AUTH_WHITELIST) {
             if (PATHS.match(pat, path)) {
                 // log.debug("JWTFilter skipped for whitelisted path {}", path);
-                return true; // не фильтруем эти пути
+                return true;
             }
         }
         return false;
@@ -84,13 +81,11 @@ public class JWTFilter extends OncePerRequestFilter {
         log.debug("Authorization header = {}", authHeader);
 
         try {
-            // 1) Если аутентификация уже есть (например, через @WithMockUser) — пропускаем дальше
             if (SecurityContextHolder.getContext().getAuthentication() != null) {
                 chain.doFilter(request, response);
                 return;
             }
 
-            // 2) Если заголовка нет или он не Bearer — сразу 401 через AuthenticationEntryPoint
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 request.setAttribute("auth.error.code", "MISSING_AUTH_HEADER");
                 request.setAttribute("auth.error.message", "Missing or invalid Authorization header");
@@ -100,9 +95,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 3) Валидируем токен
             String token = authHeader.substring(7);
-            DecodedJWT decoded = jwtUtil.validateToken(token); // может бросить TokenExpired/JWTVerification
+            DecodedJWT decoded = jwtUtil.validateToken(token);
             String username = decoded.getClaim("username").asString();
             if (username == null || username.isBlank()) {
                 request.setAttribute("auth.error.code", "INVALID_ACCESS_TOKEN");
@@ -113,11 +107,9 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 4) Загружаем пользователя и проверяем статус
             PersonDetails user = (PersonDetails) personDetailsService.loadUserByUsername(username);
 
             if (!user.isAccountNonLocked()) {
-                // 423 для заблокированного аккаунта (как и раньше)
                 response.setStatus(423);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
@@ -127,7 +119,6 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 5) Устанавливаем аутентификацию и продолжаем цепочку
             var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(auth);
             chain.doFilter(request, response);

@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Order(2)
-//@Profile("!test") // не запускаем сидер в тестовом окружении
+//@Profile("!test")
 public class SeedPickupLocations implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SeedPickupLocations.class);

@@ -90,7 +90,7 @@ class ProductControllerTests {
         ObjectNode root = objectMapper.createObjectNode();
         if (name != null)        root.put("productName", name);
         if (desc != null)        root.put("productDescription", desc);
-        if (price != null)       root.put("price", new java.math.BigDecimal(price)); // добавляем только если не null
+        if (price != null)       root.put("price", new java.math.BigDecimal(price));
         if (availability != null)root.put("availability", availability);
         if (category != null)    root.put("productCategory", category.name());
         return objectMapper.writeValueAsString(root);
@@ -99,7 +99,6 @@ class ProductControllerTests {
     @Nested
     class methodAllProducts {
 
-        // ============ 200 OK: список продуктов возвращается без аутентификации (permitAll) ============
         @Test
         void all_noAuth_returns200_withItems() throws Exception {
             var p1 = saveProduct("Phone", "Android phone", new BigDecimal("499.99"), true, ProductCategory.SMARTPHONES);
@@ -115,7 +114,6 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$[?(@.id==" + p1.getId() + ")].price").value(hasItem(closeTo(499.99, 0.01))));
         }
 
-        // ============ 200 OK: пустой список ============
         @Test
         void all_empty_returnsEmptyArray() throws Exception {
             mvc.perform(get("/product").accept(MediaType.APPLICATION_JSON))
@@ -123,7 +121,6 @@ class ProductControllerTests {
                     .andExpect(content().json("[]"));
         }
 
-        // ============ 200 OK: корректный content-type ============
         @Test
         void all_returnsJsonContentType() throws Exception {
             saveProduct("Phone", "Android phone", new BigDecimal("499.99"), true, ProductCategory.SMARTPHONES);
@@ -133,7 +130,6 @@ class ProductControllerTests {
                     .andExpect(header().string("Content-Type", containsString("application/json")));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис падает ============
         @Test
         void all_serviceThrows_returns500() throws Exception {
             doThrow(new RuntimeException("DB down")).when(productService).getAllProducts();
@@ -149,7 +145,6 @@ class ProductControllerTests {
     @Nested
     class methodAddProduct {
 
-        // ============ 200 OK: ADMIN создаёт товар ============
         @Test
         void add_admin_valid_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -178,7 +173,6 @@ class ProductControllerTests {
             Assertions.assertEquals(ProductCategory.SMARTPHONES, saved.getProductCategory());
         }
 
-        // ============ 403 FORBIDDEN: USER не имеет прав ============
         @Test
         void add_user_forbidden_returns403() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -194,7 +188,6 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$.path").value("/product/add-product"));
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ============
         @Test
         void add_unauthorized_returns401() throws Exception {
             mvc.perform(post("/product/add-product")
@@ -212,12 +205,10 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$.path").value("/product/add-product"));
         }
 
-        // ============ 400 BAD_REQUEST: валидация DTO ============
         @Test
         void add_invalidBody_returns400() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
 
-            // Пустые поля / некорректные значения
             mvc.perform(post("/product/add-product")
                             .with(authentication(auth(admin)))
                             .contentType(MediaType.APPLICATION_JSON)
@@ -229,13 +220,11 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$.path").value("/product/add-product"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис упал ============
         @Test
         void add_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
             var token = auth(admin);
 
-            // @PreAuthorize → перед стаббингом положим auth в SecurityContext
             SecurityContextHolder.getContext().setAuthentication(token);
             try {
                 doThrow(new RuntimeException("DB down")).when(productService).addProduct(any(ProductRequestDTO.class));
@@ -254,7 +243,6 @@ class ProductControllerTests {
             }
         }
 
-        // ============ 400: duplicate product name (validation or conflict) ============
         @Test
         void add_duplicateName_returns400_andDoesNotDuplicate() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -272,7 +260,7 @@ class ProductControllerTests {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body("Phone", "Another desc", "599.99", true, ProductCategory.SMARTPHONES))
                             .accept(MediaType.APPLICATION_JSON))
-                    .andExpect(status().isBadRequest()) // ожидаем 400 если стоит предчек в сервисе
+                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status", anyOf(equalTo(400), equalTo(409))))
                     .andExpect(jsonPath("$.code", anyOf(
                             equalTo("VALIDATION_ERROR"),
@@ -291,7 +279,6 @@ class ProductControllerTests {
     @Nested
     class methodUpdateProduct {
 
-        // ============ 200 OK: ADMIN частично обновляет существующий продукт (меняем только name + price) ============
         @Test
         void update_admin_partial_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -320,7 +307,6 @@ class ProductControllerTests {
             Assertions.assertEquals(ProductCategory.SMARTPHONES, updated.getProductCategory());
         }
 
-        // ============ 200 OK: ADMIN полное обновление всеми полями тоже работает ============
         @Test
         void update_admin_full_returns200_andPersists() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -346,7 +332,6 @@ class ProductControllerTests {
             Assertions.assertEquals(ProductCategory.ACCESSORIES, updated.getProductCategory());
         }
 
-        // ============ 400 BAD_REQUEST: некорректные значения (price < 0, короткое имя) ============
         @Test
         void update_invalidBody_returns400() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -363,7 +348,6 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$.path").value("/product/" + product.getId() + "/update-product"));
         }
 
-        // ============ 403 FORBIDDEN: USER не имеет прав ============
         @Test
         void update_user_forbidden_returns403_andNotChanged() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -389,7 +373,6 @@ class ProductControllerTests {
             }
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ============
         @Test
         void update_unauthorized_returns401() throws Exception {
             var product = saveProduct("Phone", "Android smartphone", BigDecimal.valueOf(499.99), true, ProductCategory.SMARTPHONES);
@@ -403,7 +386,6 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$.path").value("/product/" + product.getId() + "/update-product"));
         }
 
-        // ============ 404 NOT FOUND: несуществующий id ============
         @Test
         void update_notFound_returns404() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -438,7 +420,6 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$.path").value("/product/" + p2.getId() + "/update-product"));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: эмуляция падения сервиса ============
         @Test
         void update_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");
@@ -469,7 +450,6 @@ class ProductControllerTests {
     @Nested
     class methodAllActiveProducts {
 
-        // ============ 200 OK (ROLE_USER): возвращаются только активные товары ============
         @Test
         void allActive_user_returns200_onlyActive() throws Exception {
             var user = saveUser("maria", "maria@example.com", "ROLE_USER");
@@ -488,7 +468,6 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$[?(@.id==" + a1.getId() + ")].availability").value(hasItem(true)));
         }
 
-        // ============ 200 OK (ROLE_ADMIN): тоже доступно и тоже только активные ============
         @Test
         void allActive_admin_returns200_onlyActive() throws Exception {
             var admin = saveUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -504,17 +483,14 @@ class ProductControllerTests {
                     .andExpect(jsonPath("$[0].availability").value(true));
         }
 
-        // ============ 401 UNAUTHORIZED: без токена ============
         @Test
         void allActive_unauthorized_returns401() throws Exception {
-            // сервис требует isAuthenticated(), значит без токена — 401
             mvc.perform(get("/product/all-active-products").accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.path").value("/product/all-active-products"));
         }
 
-        // ============ 200 OK: корректный content-type ============
         @Test
         void allActive_returnsJsonContentType() throws Exception {
             var user = saveUser("user", "user@example.com", "ROLE_USER");
@@ -527,7 +503,6 @@ class ProductControllerTests {
                     .andExpect(header().string("Content-Type", containsString("application/json")));
         }
 
-        // ============ 500 INTERNAL_SERVER_ERROR: сервис падает ============
         @Test
         void allActive_serviceThrows_returns500() throws Exception {
             var admin = saveUser("root", "root@example.com", "ROLE_ADMIN");

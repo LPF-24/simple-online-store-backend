@@ -51,7 +51,6 @@ import org.springframework.context.annotation.Bean;
 
 import com.simple_online_store_backend.dto.person.PersonRequestDTO;
 
-import java.time.Instant;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.*;
@@ -71,23 +70,20 @@ class AuthControllerTests {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper objectMapper;
-    @Autowired RefreshTokenService refreshTokenService; // будет заменён на FakeRefreshTokenService из TestConfig
+    @Autowired RefreshTokenService refreshTokenService;
 
     @MockitoBean(enforceOverride = true)
     AuthenticationManager authenticationManager;
 
     @Autowired private MockMvc mockMvc;
 
-    // Реальная БД/репозиторий
     @Autowired private PeopleRepository peopleRepository;
 
-    // Реальные бины + Spy, чтобы можно было точечно подменять поведение
     @MockitoSpyBean
     private PeopleService peopleService;
     @MockitoSpyBean private PersonValidator personValidator;
 
-    // JWTUtil — МОК (вместо реального бина), чтобы контекст совпадал с твоими старыми тестами
-    @MockitoBean // <-- если у тебя нет этой аннотации, замени на @MockBean и поменяй импорт
+    @MockitoBean
     private JWTUtil jwtUtil;
 
 
@@ -99,13 +95,12 @@ class AuthControllerTests {
         }
     }
 
-    /** Простая in-memory замена Redis-хранилища рефреш-токенов для тестов */
     static class FakeRefreshTokenService extends RefreshTokenService {
         private final Map<String, String> store = new ConcurrentHashMap<>();
         private volatile boolean shouldThrow = false;
 
         public FakeRefreshTokenService() {
-            super(null); // базовому сервису RedisTemplate не нужен, не используем
+            super(null);
         }
 
         public void setShouldThrow(boolean val) { this.shouldThrow = val; }
@@ -134,11 +129,10 @@ class AuthControllerTests {
         return r;
     }
 
-    /** Создаём реальный PersonDetails (без моков), как это сделал бы UserDetailsService */
     private static PersonDetails principal(String username, int id, String role) {
         var p = new Person();
         p.setId(id);
-        p.setUserName(username);    // важно: именно userName
+        p.setUserName(username);
         p.setPassword("pwd");
         p.setRole(role);
         p.setDeleted(false);
@@ -174,21 +168,17 @@ class AuthControllerTests {
                             .contentType(APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req(username, "pwd"))))
                     .andExpect(status().isOk())
-                    // Тело: есть access-token и username
                     .andExpect(content().string(containsString(access)))
                     .andExpect(content().string(containsString(username)))
-                    // Cookie: refreshToken с нужными атрибутами
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("refreshToken=" + refresh)))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Path=/")))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("SameSite=None")))
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=")));
 
-            // refreshToken действительно сохранён (через заменённый FakeRefreshTokenService)
             var saved = ((FakeRefreshTokenService) refreshTokenService).getRefreshToken(username);
             assertEquals(refresh, saved, "refresh-token must be stored under the username key");
 
-            // взаимодействия
             verify(jwtUtil).generateToken(username, role);
             verify(jwtUtil).generateRefreshToken(username);
         }
@@ -287,7 +277,6 @@ class AuthControllerTests {
                           }
                           """;
 
-            // Через SpyBean намеренно кладём ошибки
             doAnswer(inv -> {
                 Errors errors = inv.getArgument(1, Errors.class);
                 errors.rejectValue("userName", "Size", "username is too short");
@@ -308,7 +297,6 @@ class AuthControllerTests {
 
         @Test
         void registration_duplicate_username() throws Exception {
-            // Предсоздаём пользователя напрямую
             Person p = new Person();
             p.setUserName("maria12");
             p.setPassword("encoded");
@@ -415,7 +403,6 @@ class AuthControllerTests {
             peopleRepository.save(p);
         }
 
-        // ===== 1) Успешное обновление access-токена =====
         @Test
         void refreshToken_success() throws Exception {
             var username = "maria12";
@@ -426,17 +413,14 @@ class AuthControllerTests {
             var storedRefresh = "REFRESH.TOKEN";
             var newAccess     = "ACCESS.NEW";
 
-            // jwtUtil.validateRefreshToken -> вернёт клейм username
             var decoded = mock(com.auth0.jwt.interfaces.DecodedJWT.class);
             var usernameClaim = mock(com.auth0.jwt.interfaces.Claim.class);
             when(usernameClaim.asString()).thenReturn(username);
             when(decoded.getClaim("username")).thenReturn(usernameClaim);
             when(jwtUtil.validateRefreshToken(cookieRefresh)).thenReturn(decoded);
 
-            // хранилище вернёт такой же refresh
             ((FakeRefreshTokenService) refreshTokenService).saveRefreshToken(username, storedRefresh);
 
-            // генерация нового access
             when(jwtUtil.generateToken(username, role)).thenReturn(newAccess);
 
             mockMvc.perform(post("/auth/refresh")
@@ -446,25 +430,20 @@ class AuthControllerTests {
                     .andExpect(jsonPath("$.access_token").value(newAccess));
         }
 
-        // ===== 2) Невалидный / битый refresh JWT -> 401 =====
         @Test
         void refreshToken_invalidJwt_returns401() throws Exception {
-            // Создаем "неверный" refresh token
             var bad = "BAD.REFRESH";
 
-            // Эмулируем выброс исключения, если токен невалидный
             when(jwtUtil.validateRefreshToken(bad)).thenThrow(new InvalidRefreshTokenException("Invalid refresh token"));
 
-            // Отправляем запрос с неверным refresh token
             mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", bad)))
-                    .andExpect(status().isUnauthorized())  // Ожидаем статус 401
+                    .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.status").value(401))
                     .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"))
                     .andExpect(jsonPath("$.path").value("/auth/refresh"))
                     .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
 
-        // ===== 3) Refresh в куке не совпадает с сохранённым -> 401 =====
         @Test
         void refreshToken_mismatchStored_returns401() throws Exception {
             var username = "john";
@@ -489,19 +468,16 @@ class AuthControllerTests {
                     .andExpect(jsonPath("$.path").value("/auth/refresh"));
         }
 
-        // ===== 4) Пользователь из токена отсутствует в БД -> 401 =====
         @Test
         void refreshToken_userNotFound_returns401() throws Exception {
-            var cookieToken = "REFRESH.GHOST"; // Некорректный токен
+            var cookieToken = "REFRESH.GHOST";
             var decoded = mock(com.auth0.jwt.interfaces.DecodedJWT.class);
             var claim = mock(com.auth0.jwt.interfaces.Claim.class);
 
-            // Симулируем, что имя пользователя не существует в базе
-            when(claim.asString()).thenReturn("ghost"); // Нет такого пользователя
+            when(claim.asString()).thenReturn("ghost");
             when(decoded.getClaim("username")).thenReturn(claim);
             when(jwtUtil.validateRefreshToken(cookieToken)).thenReturn(decoded);
 
-            // Выполняем запрос с "неверным" refresh токеном
             mockMvc.perform(post("/auth/refresh")
                             .cookie(new Cookie("refreshToken", cookieToken)))
                     .andExpect(status().isUnauthorized())
@@ -511,7 +487,6 @@ class AuthControllerTests {
                     .andExpect(jsonPath("$.path").value("/auth/refresh"));
         }
 
-        // ===== 5) Кука отсутствует -> 400 (MissingRequestCookieException до тела контроллера) =====
         @Test
         void refreshToken_missingCookie_returns400() throws Exception {
             mockMvc.perform(post("/auth/refresh"))
@@ -560,8 +535,6 @@ class AuthControllerTests {
             when(decoded.getClaim("username")).thenReturn(claim);
             when(jwtUtil.validateRefreshToken(cookieToken)).thenReturn(decoded);
 
-            // важно: НЕ сохраняем токен в хранилище → getRefreshToken(username) вернёт null
-
             mockMvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", cookieToken)))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
@@ -595,7 +568,6 @@ class AuthControllerTests {
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").value("Logged out successfully"))
-                    // Проверяем Set-Cookie на очистку (Max-Age=0, HttpOnly, Secure, Path=/)
                     .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
                             containsString("refreshToken="),
                             containsString("Max-Age=0"),
@@ -639,7 +611,6 @@ class AuthControllerTests {
         @DisplayName("logout: 401, if the refresh JWT has expired")
         void logout_expiredRefresh_returns401() throws Exception {
             var expired = "EXPIRED.REFRESH";
-            // Эмулируем просроченный JWT от auth0
             when(jwtUtil.validateRefreshToken(expired))
                     .thenThrow(new InvalidRefreshTokenException("The Token has expired"));
 

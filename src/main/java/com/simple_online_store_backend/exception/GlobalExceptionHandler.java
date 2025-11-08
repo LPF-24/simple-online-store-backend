@@ -30,12 +30,10 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), req.getRequestURI());
     }
 
-    // 400 — ошибки парсинга тела/enum и т.п.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDTO> handleNotReadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
         String msg = Optional.of(ex.getMostSpecificCause())
                 .map(Throwable::getMessage).orElse("Malformed request");
-        // часто в сообщении лишний stacktrace — можно обрезать по первой строке
         msg = msg.split("\n")[0];
         return error(HttpStatus.BAD_REQUEST, "MESSAGE_NOT_READABLE", msg, req.getRequestURI());
     }
@@ -47,13 +45,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "MISSING_COOKIE", msg, req.getRequestURI());
     }
 
-    // 401 — неверные креды при логине
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponseDTO> handleBadCredentials(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.UNAUTHORIZED, "BAD_CREDENTIALS", "Invalid username or password", req.getRequestURI());
     }
 
-    // 403 — нет прав
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDTO> handleAccessDenied(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", ex.getMessage(), req.getRequestURI());
@@ -66,7 +62,6 @@ public class GlobalExceptionHandler {
                 ex.getMessage(), req.getRequestURI());
     }
 
-    // 423 — аккаунт заблокирован/деактивирован
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ErrorResponseDTO> handleLocked(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.LOCKED, "ACCOUNT_LOCKED",
@@ -74,7 +69,6 @@ public class GlobalExceptionHandler {
                 req.getRequestURI());
     }
 
-    // 500 — дефолт
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAny(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error", req.getRequestURI());

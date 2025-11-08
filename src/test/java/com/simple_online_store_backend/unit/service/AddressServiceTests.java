@@ -64,8 +64,8 @@ class AddressServiceTests {
         AddressResponseDTO result = addressService.addAddress(req, 1);
 
         assertEquals("New York", result.getCity());
-        assertSame(existing, person.getAddress());             // привязали к человеку
-        verify(addressRepository, never()).save(any(Address.class)); // новый адрес не создавали
+        assertSame(existing, person.getAddress());
+        verify(addressRepository, never()).save(any(Address.class));
     }
 
     @Test
@@ -100,14 +100,12 @@ class AddressServiceTests {
 
     @Test
     void updateAddress_copiesOnlyNonNullFields_andSaves() {
-        // исходный адрес в БД
         Address address = new Address();
         address.setCity("OldCity");
         address.setStreet("OldStreet");
         address.setHouseNumber("1");
         address.setApartment("2");
 
-        // частичное обновление: изменяем только city, остальные null
         AddressRequestDTO patch = new AddressRequestDTO();
         patch.setCity("NewCity");
 
@@ -119,10 +117,10 @@ class AddressServiceTests {
 
         AddressResponseDTO result = addressService.updateAddress(10, patch);
 
-        assertEquals("NewCity", address.getCity());         // обновилось
-        assertEquals("OldStreet", address.getStreet());     // сохранилось
-        assertEquals("1", address.getHouseNumber());        // сохранилось
-        assertEquals("2", address.getApartment());          // сохранилось
+        assertEquals("NewCity", address.getCity());
+        assertEquals("OldStreet", address.getStreet());
+        assertEquals("1", address.getHouseNumber());
+        assertEquals("2", address.getApartment());
 
         assertEquals("NewCity", result.getCity());
         verify(addressRepository).save(address);
@@ -135,21 +133,19 @@ class AddressServiceTests {
                 () -> addressService.updateAddress(123, new AddressRequestDTO()));
     }
 
-    // ---------- deleteAddress
-
     @Test
     void deleteAddress_unlinksFromPerson_andDeletesIfUnusedByOthers() {
         Address addr = new Address(); addr.setCity("CityX");
         person.setAddress(addr);
 
         when(peopleRepository.findById(1)).thenReturn(Optional.of(person));
-        when(peopleRepository.existsByAddress(addr)).thenReturn(false); // никто больше не использует
+        when(peopleRepository.existsByAddress(addr)).thenReturn(false);
 
         addressService.deleteAddress(1);
 
         assertNull(person.getAddress());
         verify(peopleRepository).save(person);
-        verify(addressRepository).delete(addr); // удалили из БД
+        verify(addressRepository).delete(addr);
     }
 
     @Test
@@ -158,7 +154,7 @@ class AddressServiceTests {
         person.setAddress(addr);
 
         when(peopleRepository.findById(1)).thenReturn(Optional.of(person));
-        when(peopleRepository.existsByAddress(addr)).thenReturn(true); // используется другими
+        when(peopleRepository.existsByAddress(addr)).thenReturn(true);
 
         addressService.deleteAddress(1);
 
@@ -169,7 +165,6 @@ class AddressServiceTests {
 
     @Test
     void deleteAddress_throwsWhenNoAddressSet() {
-        // у пользователя нет адреса
         when(peopleRepository.findById(1)).thenReturn(Optional.of(person));
         assertThrows(EntityNotFoundException.class, () -> addressService.deleteAddress(1));
         verify(addressRepository, never()).delete(any(Address.class));

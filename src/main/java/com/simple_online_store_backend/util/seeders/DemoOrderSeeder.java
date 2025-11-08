@@ -38,16 +38,16 @@ class DemoOrderSeeder implements CommandLineRunner {
 
         if (anyExists) return;
 
-        int id1 = createOrder(blocked, OrderStatus.PENDING);   // для проверки 423 в соответствующем эндпоинте
+        int id1 = createOrder(blocked, OrderStatus.PENDING);
         log.info("[DEMO] Seeded order id={} for blocked user {}", id1, blocked.getEmail());
 
-        int id2 = createOrder(user, OrderStatus.PENDING);      // /orders/{id}/cancel-order → 200
+        int id2 = createOrder(user, OrderStatus.PENDING);
         log.info("[DEMO] Seeded PENDING order id={} for {}", id2, user.getEmail());
 
-        int id3 = createOrder(user, OrderStatus.SHIPPED);      // /orders/{id}/cancel-order → 400
+        int id3 = createOrder(user, OrderStatus.SHIPPED);
         log.info("[DEMO] Seeded SHIPPED order id={} for {}", id3, user.getEmail());
 
-        int id4 = createOrder(user, OrderStatus.CANCELLED);      // /orders/{id}/reactivate-order → 200
+        int id4 = createOrder(user, OrderStatus.CANCELLED);
         log.info("[DEMO] Seeded CANCELLED order id={} for {}", id4, user.getEmail());
     }
 

@@ -54,7 +54,7 @@ class AccountDemoControllerTests {
         p.setEmail(email);
         p.setPassword("encoded");
         p.setRole(role);
-        p.setDeleted(locked); // в проекте locked хранится в deleted
+        p.setDeleted(locked);
         return peopleRepository.save(p);
     }
 

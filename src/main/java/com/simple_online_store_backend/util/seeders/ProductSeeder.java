@@ -63,7 +63,6 @@ public class ProductSeeder implements CommandLineRunner {
         }
     }
 
-    // ------- Address: добавляем при отсутствии записи с тем же адресом -------
     private void seedAddress() {
         ensureAddress("Berlin", "Main Street", "12A", "45", "10115");
     }
@@ -90,7 +89,6 @@ public class ProductSeeder implements CommandLineRunner {
         log.info("[Seeder] Added default address: {}, {} {} (apt {}), {}", city, street, houseNumber, apartment, postalCode);
     }
 
-    // ------- PickupLocation: добавляем при отсутствии записи с тем же адресом -------
     private void seedPickupLocation() {
         ensurePickup("Berlin", "Alexanderplatz", "1", true);
     }

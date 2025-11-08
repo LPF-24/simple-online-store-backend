@@ -88,7 +88,7 @@ public class StartupSeeder implements CommandLineRunner {
             p.setUserName(username);
             p.setEmail(email);
             p.setRole(role);
-            p.setPassword(passwordEncoder.encode(rawPassword)); // важно: хэшируем
+            p.setPassword(passwordEncoder.encode(rawPassword));
             p.setDeleted(isLocked);
 
             persons.save(p);

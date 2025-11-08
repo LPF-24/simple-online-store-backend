@@ -33,14 +33,12 @@ public class RefreshDemoHelpersController {
         this.refreshTokenService = refreshTokenService;
     }
 
-    // Настройки куки (удобно крутить в application.properties)
     @Value("${app.cookies.secure:true}")
     boolean cookieSecure;
 
     @Value("${app.cookies.same-site:None}")
     String cookieSameSite;
 
-    // Секрет и issuer должны совпадать с тем, что использует JWTUtil
     @Value("${jwt_secret}")
     String jwtSecret;
 
@@ -107,9 +105,7 @@ public class RefreshDemoHelpersController {
     @Operation(summary = "Desync saved refresh to force mismatch (401 INVALID_REFRESH_TOKEN)")
     public ResponseEntity<?> desyncSaved(@RequestParam(defaultValue = "admin") String username,
                                          HttpServletResponse resp) {
-        // cookie — валидная
         String cookieRefresh = jwtUtil.generateRefreshToken(username);
-        // в хранилище кладём другой валидный refresh
         String otherRefresh = jwtUtil.generateRefreshToken(username);
         refreshTokenService.saveRefreshToken(username, otherRefresh);
 

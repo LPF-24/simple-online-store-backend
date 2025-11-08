@@ -40,7 +40,6 @@ class AddressControllerTests {
     @Autowired PeopleRepository peopleRepository;
     @Autowired AddressRepository addressRepository;
 
-    // Спай контроллера — чтобы подменить getUserId()
     @MockitoSpyBean
     AddressController addressController;
 
@@ -49,7 +48,6 @@ class AddressControllerTests {
 
     @BeforeEach
     void clean() {
-        // чистим в правильном порядке (сначала адрес у юзеров, потом таблицы)
         peopleRepository.findAll().forEach(p -> p.setAddress(null));
         peopleRepository.saveAll(peopleRepository.findAll());
         addressRepository.deleteAll();
@@ -59,7 +57,7 @@ class AddressControllerTests {
 
     private String validJson(String city, String street, String houseNumber,
                              String apartment, String postalCode, String deliveryType,
-                             String housingType /* может быть null */) throws Exception {
+                             String housingType ) throws Exception {
         AddressRequestDTO dto = new AddressRequestDTO();
         dto.setCity(city);
         dto.setStreet(street);
@@ -75,7 +73,6 @@ class AddressControllerTests {
 
     @Nested
     class methodAddAddressTests {
-        // === 1) Успех: адреса нет — создаём и привязываем к пользователю ===
         @Test
         void addAddress_success_createsNew() throws Exception {
             int userId = createUser("maria12", "maria12@gmail.com", "ROLE_USER");
@@ -104,7 +101,6 @@ class AddressControllerTests {
             assertTrue(inDb.isPresent(), "Address entity must be persisted");
         }
 
-        // === 2) Успех: адрес уже существует — переиспользуем без дубликатов ===
         @Test
         void addAddress_success_reusesExisting() throws Exception {
             int userId = createUser("john", "john@example.com", "ROLE_USER");
@@ -136,13 +132,11 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.apartment").value("7"))
                     .andExpect(jsonPath("$.postalCode").value("80333"));
 
-            // пользователь должен ссылаться на тот же адрес; количество записей не увеличилось
             Person updated = peopleRepository.findById(userId).orElseThrow();
             assertEquals(existing.getId(), updated.getAddress().getId(), "Must reuse the existing address entity");
             assertEquals(beforeCount, addressRepository.count(), "No duplicate addresses must be created");
         }
 
-        // === 3) Валидации DTO: неверный формат/пустые поля → 400 VALIDATION_ERROR ===
         @Test
         void addAddress_validationErrors_returns400() throws Exception {
             int userId = createUser("kate", "kate@example.com", "ROLE_USER");
@@ -170,13 +164,12 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
 
-        // === 5) Битый JSON → 400 MESSAGE_NOT_READABLE ===
         @Test
         void addAddress_malformedJson_returns400() throws Exception {
             int userId = createUser("nick", "nick@example.com", "ROLE_USER");
             doReturn(userId).when(addressController).getUserId();
 
-            String malformed = "{ \"city\": \"Berlin\", "; // обрываем
+            String malformed = "{ \"city\": \"Berlin\", ";
 
             mvc.perform(post("/address/add-address")
                             .with(user("nick").roles("USER"))
@@ -188,7 +181,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.path", containsString("/address/add-address")));
         }
 
-        // === 6) Внутренняя ошибка сервиса → 500 INTERNAL_ERROR ===
         @Test
         void addAddress_serviceThrows_returns500() throws Exception {
             int userId = createUser("peter", "peter@example.com", "ROLE_USER");
@@ -241,7 +233,6 @@ class AddressControllerTests {
             return dto;
         }
 
-        // === 1) 200 OK: полная замена значений ===
         @Test
         void updateAddress_success_updatesAllFields() throws Exception {
             int userId = createUser("masha", "masha@example.com", "ROLE_USER");
@@ -274,7 +265,6 @@ class AddressControllerTests {
             assertEquals("80333", updated.getPostalCode());
         }
 
-        // === 2) 200 OK: частичное обновление (только postalCode), остальные поля — как были ===
         @Test
         void updateAddress_success_partialUpdatePostalCodeOnly() throws Exception {
             int userId = createUser("john", "john@example.com", "ROLE_USER");
@@ -300,7 +290,6 @@ class AddressControllerTests {
             assertEquals("Berlin", after.getCity(), "city must stay the same");
         }
 
-        // === 3) 400: валидация DTO не прошла ===
         @Test
         void updateAddress_validationErrors_returns400() throws Exception {
             int userId = createUser("kate", "kate@example.com", "ROLE_USER");
@@ -333,7 +322,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.message", not(blankOrNullString())));
         }
 
-        // === 4) 400: битый JSON → MESSAGE_NOT_READABLE ===
         @Test
         void updateAddress_malformedJson_returns400() throws Exception {
             int userId = createUser("nick", "nick@example.com", "ROLE_USER");
@@ -344,7 +332,7 @@ class AddressControllerTests {
 
             doReturn(userId).when(addressController).getUserId();
 
-            String malformed = "{ \"city\": \"Berlin\", "; // оборвано
+            String malformed = "{ \"city\": \"Berlin\", ";
 
             mvc.perform(patch("/address/update-address")
                             .with(user("nick").roles("USER"))
@@ -356,7 +344,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.path", containsString("/address/update-address")));
         }
 
-        // === 5) 404: у пользователя нет адреса → getAddressIdByPersonId бросает EntityNotFoundException ===
         @Test
         void updateAddress_userHasNoAddress_returns404() throws Exception {
             int userId = createUser("noaddr", "noaddr@example.com", "ROLE_USER");
@@ -375,7 +362,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.path", containsString("/address/update-address")));
         }
 
-        // === 6) 401: нет аутентификации ===
         @Test
         void updateAddress_invalidToken_returns401() throws Exception {
             var dto = validDto("Berlin", "Main Street", "12A", "45", "10115");
@@ -388,7 +374,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.code").value("INVALID_ACCESS_TOKEN"));
         }
 
-        // === 7) 403: роль не подходит (например, только ROLE_ADMIN) ===
         @Test
         void updateAddress_forbidden_returns403() throws Exception {
             int userId = createUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -403,7 +388,6 @@ class AddressControllerTests {
                     .andExpect(status().isForbidden());
         }
 
-        // === 8) 500: сервис упал внутри updateAddress ===
         @Test
         void updateAddress_serviceThrows_returns500() throws Exception {
             int userId = createUser("peter", "peter@example.com", "ROLE_USER");
@@ -432,13 +416,11 @@ class AddressControllerTests {
 
     @Nested
     class methodDeleteAddressTests {
-        // === 1) 200 OK: единственный владелец — адрес удаляется из БД, связь у пользователя обнуляется ===
         @Test
         void deleteAddress_success_singleOwner_removesRow() throws Exception {
             int userId = createUser("user1", "user1@example.com", "ROLE_USER");
             Address addr = createAddress("Berlin", "Main Street", "12A", "45", "10115");
 
-            // привяжем адрес пользователю
             Person u = peopleRepository.findById(userId).orElseThrow();
             u.setAddress(addr);
             peopleRepository.save(u);
@@ -452,21 +434,18 @@ class AddressControllerTests {
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message", containsString("deleted")));
 
-            // Проверим состояние после удаления
             Person updated = peopleRepository.findById(userId).orElseThrow();
             assertNull(updated.getAddress(), "Person.address must be null after deletion");
             assertEquals(beforeAddrCount - 1, addressRepository.count(), "Address row must be removed from DB");
             assertFalse(addressRepository.findById(addr.getId()).isPresent(), "Address must not exist anymore");
         }
 
-        // === 2) 200 OK: адрес общий у двух пользователей — у одного отвяжется, но запись не удалится ===
         @Test
         void deleteAddress_success_sharedAddress_detachOnly() throws Exception {
             int userA = createUser("userA", "a@example.com", "ROLE_USER");
             int userB = createUser("userB", "b@example.com", "ROLE_USER");
             Address addr = createAddress("Munich", "Ludwigstrasse", "10", "7", "80333");
 
-            // оба пользователя ссылаются на один и тот же адрес
             Person a = peopleRepository.findById(userA).orElseThrow();
             Person b = peopleRepository.findById(userB).orElseThrow();
             a.setAddress(addr);
@@ -481,7 +460,6 @@ class AddressControllerTests {
                             .with(user("userA").roles("USER")))
                     .andExpect(status().isOk());
 
-            // userA больше не ссылается, userB всё ещё ссылается; адрес остался в БД
             Person a2 = peopleRepository.findById(userA).orElseThrow();
             Person b2 = peopleRepository.findById(userB).orElseThrow();
             assertNull(a2.getAddress(), "userA must be detached from address");
@@ -490,7 +468,6 @@ class AddressControllerTests {
             assertTrue(addressRepository.findById(addr.getId()).isPresent(), "Address must still exist");
         }
 
-        // === 3) 404: у пользователя нет адреса ===
         @Test
         void deleteAddress_userHasNoAddress_returns404() throws Exception {
             int userId = createUser("noaddr", "noaddr@example.com", "ROLE_USER");
@@ -508,7 +485,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.path", containsString("/address/delete-address")));
         }
 
-        // === 4) 401: нет аутентификации / отсутствует токен ===
         @Test
         void deleteAddress_unauthorized_returns401() throws Exception {
             mvc.perform(delete("/address/delete-address"))
@@ -516,12 +492,11 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.code", anyOf(
                             equalTo("MISSING_AUTH_HEADER"),
                             equalTo("UNAUTHORIZED"),
-                            equalTo("INVALID_ACCESS_TOKEN"),      // если у тебя EntryPoint всегда "INVALID_ACCESS_TOKEN"
+                            equalTo("INVALID_ACCESS_TOKEN"),
                             equalTo("TOKEN_EXPIRED")
                     )));
         }
 
-        // === 5) 403: роль не подходит (например, только ROLE_USER допускается) ===
         @Test
         void deleteAddress_forbidden_returns403() throws Exception {
             int adminId = createUser("admin", "admin@example.com", "ROLE_ADMIN");
@@ -534,7 +509,6 @@ class AddressControllerTests {
                     .andExpect(jsonPath("$.code", anyOf(equalTo("ACCESS_DENIED"), equalTo("FORBIDDEN"))));
         }
 
-        // === 6) 500: сервис упал внутри deleteAddress ===
         @Test
         void deleteAddress_serviceThrows_returns500() throws Exception {
             int userId = createUser("userX", "ux@example.com", "ROLE_USER");

@@ -54,7 +54,6 @@ class OrderServiceTests {
 
         ownerDetails = new PersonDetails(owner);
 
-        // Реальный токен с ролью USER
         var auth = new UsernamePasswordAuthenticationToken(
                 ownerDetails,
                 null,
@@ -67,8 +66,6 @@ class OrderServiceTests {
     void clear() {
         SecurityContextHolder.clearContext();
     }
-
-    // ---------------- createOrder
 
     @Test
     void createOrder_success_withAddress() {
@@ -191,7 +188,6 @@ class OrderServiceTests {
 
     @Test
     void getOrderById_allowsAdmin_forAnyOrder() {
-        // подменяем токен на ADMIN
         var adminAuth = new UsernamePasswordAuthenticationToken(
                 ownerDetails, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
         );

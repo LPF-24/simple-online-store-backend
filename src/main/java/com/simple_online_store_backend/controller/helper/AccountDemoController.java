@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.*;
 
-import java.time.Duration;
 import java.util.Map;
 
 @ConditionalOnProperty(value = "demo.helpers.enabled", havingValue = "true")
@@ -15,7 +14,7 @@ import java.util.Map;
 @RequestMapping("/auth/dev")
 public class AccountDemoController {
 
-    private final PeopleService peopleService; // или PeopleRepository + доменная логика
+    private final PeopleService peopleService;
 
     public AccountDemoController(PeopleService peopleService) {
         this.peopleService = peopleService;
