@@ -89,4 +89,26 @@ public class SwaggerConstants {
     public static final String ORDER_PRODUCT_COUNT_DESC =
             "Number of products included in the order.";
     public static final String ORDER_PRODUCT_COUNT_EXAMPLE = "3";
+
+    // --- For ProductRequestDTO ---
+    public static final String PRODUCT_REQ_NAME_DESC =
+            "Product name. Must be between 2 and 255 characters.";
+    public static final String PRODUCT_REQ_NAME_EXAMPLE = "Wireless Headphones";
+
+    public static final String PRODUCT_REQ_DESC_DESC =
+            "Detailed product description. Must be between 10 and 600 characters.";
+    public static final String PRODUCT_REQ_DESC_EXAMPLE =
+            "Comfortable wireless headphones with noise cancellation and long battery life.";
+
+    public static final String PRODUCT_REQ_PRICE_DESC =
+            "Product price. Must be at least 0.01 and have up to 8 digits before and 2 digits after the decimal point.";
+    public static final String PRODUCT_REQ_PRICE_EXAMPLE = "99.99";
+
+    public static final String PRODUCT_REQ_CATEGORY_DESC =
+            "Product category. Must be a valid value from the ProductCategory enum.";
+    public static final String PRODUCT_REQ_CATEGORY_EXAMPLE = "ELECTRONICS";
+
+    public static final String PRODUCT_REQ_AVAILABILITY_DESC =
+            "Availability status of the product (true = available for order).";
+    public static final String PRODUCT_REQ_AVAILABILITY_EXAMPLE = "true";
 }
