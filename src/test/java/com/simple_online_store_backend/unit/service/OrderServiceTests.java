@@ -1,7 +1,5 @@
 package com.simple_online_store_backend.unit.service;
 
-// package com.simple_online_store_backend.unit.service;
-
 import com.simple_online_store_backend.dto.order.*;
 import com.simple_online_store_backend.entity.Address;
 import com.simple_online_store_backend.entity.Order;
