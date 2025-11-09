@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com</groupId>
-	<artifactId>simple-online-store-backend</artifactId>
+	<artifactId>online-store-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>simple-online-store-backend</name>
+	<name>online-store-backend</name>
 	<description>Pet-project with Spring Boot, Security and REST</description>
 	<url/>
 	<licenses>
